@@ -2,8 +2,8 @@ clearvars
 
 sequence = {'AAAAAAAAAA', 'GGGGGGGGGG'}; % sequence(s) of initial virus(es)
 sequence_number = [1, 2]; % initial virus count(s)
-sequence_recognition = [false, false]; % initial virus is not recognized
 nSequence = length(sequence); % number of viruses
+sequence_recognition = false(1, nSequence); % initial virus is not recognized
 possible_bases = ['A', 'C', 'G', 'T'];
 nPossibleBases=length(possible_bases);
 nBase = length(sequence{1}); % no change in length
@@ -19,6 +19,7 @@ recorded_sequence=sequence;
 recorded_sequence_time=cell(1, nSequence);
 recorded_sequence_number=cell(1, nSequence);
 recorded_sequence_recognition_time=zeros(1, nSequence);
+recorded_sequence_recognition=false(1, nSequence);
 for iSequence=1:nSequence
     recorded_sequence_time{iSequence}(1)=0;
     recorded_sequence_number{iSequence}(1)=sequence_number(iSequence);
@@ -67,10 +68,21 @@ for iTime=1:nTime
     % Evaluate for each unrecognized sequence whether it is recognized
     sequence_unrecognized = ~sequence_recognition;
     for iUnrecognized=find(sequence_unrecognized)
+        
+        % if a sequence was already recorded, assign its recorded recognition value
+        sequence_in_recorded_sequence = strcmp(recorded_sequence, sequence{iUnrecognized});
+        if recorded_sequence_recognition(sequence_in_recorded_sequence)
+                sequence_recognition(iUnrecognized) = true; 
+                continue % recognized, so continue to next unrecognized
+        end
+        
         for iSequenceNumber=1:sequence_number(iUnrecognized)
+            % add here that if a sequence was already recognized previously
+            % it should be immediately set to recognized again
             if rand(1)<immune_recognition
                 sequence_recognition(iUnrecognized) = true; 
                 recorded_sequence_recognition_time(strcmp(recorded_sequence, sequence(iUnrecognized))) = t(iTime);
+                break % recognized, so continue to next unrecognized
             end
         end
     end
@@ -89,6 +101,7 @@ for iTime=1:nTime
     recorded_sequence=unique([recorded_sequence, sequence], 'stable');
     recorded_sequence_time=[recorded_sequence_time, cell(1, length(recorded_sequence)-length(recorded_sequence_time))];
     recorded_sequence_number=[recorded_sequence_number, cell(1, length(recorded_sequence)-length(recorded_sequence_number))];
+    recorded_sequence_recognition=[recorded_sequence_recognition, false(1, length(recorded_sequence)-length(recorded_sequence_number))];
     % length of recorded_sequence_time and recorded_sequence_number should
     % be the same as length of recorded_sequence, this can be done by
     % initialization
@@ -99,6 +112,7 @@ for iTime=1:nTime
         if any(recorded_sequence_in_sequence)
             recorded_sequence_time{iRecordedSequence}=[recorded_sequence_time{iRecordedSequence}, iTime];
             recorded_sequence_number{iRecordedSequence}=[recorded_sequence_number{iRecordedSequence}, sequence_number(recorded_sequence_in_sequence)];
+            recorded_sequence_recognition(iRecordedSequence)=sequence_recognition(recorded_sequence_in_sequence); % also updating for old sequences...
         end
         
     end
