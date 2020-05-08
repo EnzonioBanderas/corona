@@ -1,19 +1,24 @@
 clearvars
 
-sequence = {'AAAAAAAAAA', 'GGGGGGGGGG'}; % sequence(s) of initial virus(es)
-sequence_number = [1, 2]; % initial virus count(s)
-nSequence = length(sequence); % number of viruses
-sequence_recognition = false(1, nSequence); % initial virus is not recognized
+% Define
 possible_bases = ['A', 'C', 'G', 'T'];
 nPossibleBases=length(possible_bases);
+
+% Initial conditions
+sequence = {'AAAAAAAAAA', 'GGGGGGGGGG'}; % sequence(s) of initial virus(es)
+sequence_number = [50, 50]; % initial virus count(s)
+nSequence = length(sequence); % number of viruses
+sequence_recognition = false(1, nSequence); % initial virus is not recognized
 nBase = length(sequence{1}); % no change in length
+
+% Parameters - probabilities and number of time ticks
 growth_probability = 0.2; % every 5 time ticks I want a replication
 mu_v = 0.1; % for every replication, this is the chance of a mutation to another base than original
-nTime = 50; % number of time ticks
-immune_recognition = 0.01; % each time tick, this is the probability a virus will be recognized
+immune_recognition = 0.001; % each time tick, this is the probability a virus will be recognized
 immune_destruction = 0.3; % if the virus is recognized, this is the chance that a virus will be eliminated
+nTime = 15; % number of time ticks
 
-% time info initialization
+% Initialization of variables which record viral info over time
 t=0:nTime;
 recorded_sequence=sequence;
 recorded_sequence_time=cell(1, nSequence);
@@ -128,14 +133,34 @@ end
 recorded_sequence
 
 figure
+nSequence = length(recorded_sequence_number);
 total_virus_number_end=0;
-for iSequence=1:length(recorded_sequence_number)
+virus_number_end = zeros(1, nSequence);
+for iSequence=1:nSequence
     plot(recorded_sequence_time{iSequence}, recorded_sequence_number{iSequence})
     hold on
     
+    virus_number_end(iSequence) = recorded_sequence_number{iSequence}(end);
     total_virus_number_end=total_virus_number_end+recorded_sequence_number{iSequence}(end);
 end
+title('Virus count time series')
 xlabel('Time')
 ylabel('Virus count')
 
 total_virus_number_end
+
+figure
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+tic
+recorded_sequence_distances = seqpdist(recorded_sequence,...
+                                        'Alphabet', 'NT',...
+                                        'Method', 'Jukes-Cantor',...
+                                        'SQUAREFORM', true);
+toc
+tic
+coord_MDS = cmdscale(recorded_sequence_distances, 2);
+toc
+scatter(coord_MDS(:, 1), coord_MDS(:, 2), 10*(virus_number_end+1), virus_number_end, 'filled')
+title('Sequence scatter plot, dimensional reduction with MDS on Jukes-Cantor distance matrix')
+xlabel('MDS 1')
+ylabel('MDS 2')
