@@ -5,20 +5,25 @@ possible_bases = ['A', 'C', 'G', 'T'];
 nPossibleBases=length(possible_bases);
 
 % Initial conditions
-sequence = {'AAAAAAAAAA', 'GGGGGGGGGG'}; % sequence(s) of initial virus(es)
-sequence_number = [2, 1]; % initial virus count(s)
+sequence_initial = {'AAAAAAAAAA', 'GGGGGGGGGG'}; % sequence(s) of initial virus(es) (these are deemed "viable")
+sequence = sequence_initial;
+sequence_number = [1, 2]; % initial virus count(s)
 sequence_growth = [0.2, 0.3]; % probability of growth for each sequence
-sequence_mu_v = [0.1, 0.2]; % for every replication, this is the chance of a mutation to another base than original
+sequence_mu_v = [0.2, 0.3]; % for every replication, this is the chance of a mutation to another base than original
 nSequence = length(sequence); % number of viruses
 sequence_recognition = false(1, nSequence); % initial virus is not recognized
 nBase = length(sequence{1}); % no change in length
 
 % Parameters - probabilities and number of time ticks
-growth_mutation_range = 0.01; % range in which growth can change in a single mutation
-mu_v_mutation_range = 0.01; % range in which mu_v can change in a single mutation
-immune_recognition = 0.01; % each time tick, this is the probability a virus will be recognized
-immune_destruction = 0.3; % if the virus is recognized, this is the chance that a virus will be eliminated
-nTime = 30; % number of time ticks
+growth_mutation_range = 0.3; % range in which growth can change in a single mutation
+mu_v_mutation_range = 0.3; % range in which mu_v can change in a single mutation
+immune_recognition = 0.001; % each time tick, this is the probability a virus will be recognized
+immune_destruction = 0.75; % if the virus is recognized, this is the chance that a virus will be eliminated
+nTime = 40; % number of time ticks
+viability = ones(1, nBase); % viability of viral sequence as a function of number of mutations
+viability(5:end)=0; % sequences with 4 or more mutations from sequences which are known to be viable initially are destroyed
+% viability can be expanded to not be a step function, but this means that
+% all sequences to ever appear and their viability needs to be remembered
 
 % Initialization of variables which record viral info over time
 t=0:nTime;
@@ -40,6 +45,10 @@ average_mutation = zeros(1, nTime+1);
 average_mutation(1) = sum(sequence_number.*sequence_growth)/sum(sequence_number);
 average_growth = zeros(1, nTime+1);
 average_growth(1) = sum(sequence_number.*sequence_mu_v)/sum(sequence_number);
+
+sequence_plusnonviable = sequence; % viability memory, only necessary non-step-function viability
+sequence_viable = true(1, nSequence); % viability memory, only necessary non-step-function viability
+sequence_viable_initial = true(1, nSequence); % viability when compared to initial sequences
 
 for iTime=1:nTime
     
@@ -71,19 +80,39 @@ for iTime=1:nTime
                 
             % else it must be new and you should grow the sequence array
             else
-                nNewSequence=length(sequence)+1;
-                sequence{nNewSequence}=new_sequence;
-                sequence_number(nNewSequence)=1;
-                sequence_recognition(nNewSequence)=false;                
                 
-                sequence_growth(nNewSequence)=sequence_growth(iSequence)+(rand(1)-0.5)*growth_mutation_range;
-                if sequence_growth(nNewSequence)<0
-                    sequence_growth(nNewSequence)=0;
+                % always add this sequence to sequence_plusnonviable
+                
+                % only add this sequence if its distance to initial
+                % sequences is viable, or if its remembered to be viable
+                for iInitialSequence=1:length(sequence_initial)
+                   initial_viable_index = sum(new_sequence~=sequence_initial{iInitialSequence});
+                   if initial_viable_index>0
+                        sequence_viable_initial(iInitialSequence) = viability(initial_viable_index); 
+                   end
                 end
                 
-                sequence_mu_v(nNewSequence)=sequence_mu_v(iSequence)+(rand(1)-0.5)*mu_v_mutation_range;
-                if sequence_mu_v(nNewSequence)<0
-                    sequence_mu_v(nNewSequence)=0;
+                if any(sequence_viable_initial)
+                    
+                    nNewSequence=length(sequence)+1;
+                    sequence{nNewSequence}=new_sequence;
+                    sequence_number(nNewSequence)=1;
+                    sequence_recognition(nNewSequence)=false;                
+
+                    sequence_growth(nNewSequence)=sequence_growth(iSequence)+(rand(1)-0.5)*growth_mutation_range;
+                    if sequence_growth(nNewSequence)<0
+                        sequence_growth(nNewSequence)=0;
+                    elseif sequence_growth(nNewSequence)>1
+                        sequence_growth(nNewSequence)=1;
+                    end
+
+                    sequence_mu_v(nNewSequence)=sequence_mu_v(iSequence)+(rand(1)-0.5)*mu_v_mutation_range;
+                    if sequence_mu_v(nNewSequence)<0
+                        sequence_mu_v(nNewSequence)=0;
+                    elseif sequence_mu_v(nNewSequence)>1
+                        sequence_mu_v(nNewSequence)=1;
+                    end
+                
                 end
                 
             end
@@ -157,8 +186,8 @@ for iTime=1:nTime
     sequence_mu_v=sequence_mu_v(sequence_remaining);
     
     % Update average mutation and growth
-    average_mutation(iTime+1) = sum(sequence_number.*sequence_growth)/sum(sequence_number);
-    average_growth(iTime+1) = sum(sequence_number.*sequence_mu_v)/sum(sequence_number);
+    average_mutation(iTime+1) = sum(sequence_number.*sequence_mu_v)/sum(sequence_number);
+    average_growth(iTime+1) = sum(sequence_number.*sequence_growth)/sum(sequence_number);
 
 end
 
