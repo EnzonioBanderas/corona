@@ -2,66 +2,65 @@ clearvars
 
 % Define
 possible_bases = ['A', 'C', 'G', 'T'];
-nPossibleBases=length(possible_bases);
+nPossibleBases = length(possible_bases);
 
 % Initial conditions
 sequence_initial = {'AAAAAAAAAA', 'GGGGGGGGGG'}; % sequence(s) of initial virus(es) (these are deemed "viable")
-sequence = sequence_initial;
+sequence = sequence_initial; % represents sequences which are currently present
+nSequenceInitial = length(sequence); % number of initial sequences
 sequence_number = [1, 2]; % initial virus count(s)
 sequence_growth = [0.2, 0.3]; % probability of growth for each sequence
-sequence_mu_v = [0.2, 0.3]; % for every replication, this is the chance of a mutation to another base than original
-nSequence = length(sequence); % number of viruses
-sequence_recognition = false(1, nSequence); % initial virus is not recognized
-nBase = length(sequence{1}); % no change in length
+sequence_mu_v = [0.01, 0.02]; % for every replication, every base has a chance to change from its original with this probability
+sequence_recognition = false(1, nSequenceInitial); % initial virus is not recognized
+nBase = length(sequence{1}); % number of bases is constant
 
 % Parameters - probabilities and number of time ticks
 growth_mutation_range = 0.3; % range in which growth can change in a single mutation
 mu_v_mutation_range = 0.3; % range in which mu_v can change in a single mutation
-immune_recognition = 0.001; % each time tick, this is the probability a virus will be recognized
-immune_destruction = 0.75; % if the virus is recognized, this is the chance that a virus will be eliminated
+immune_recognition = 0.001; % each time tick, this is the probability that a virus will be recognized for every time tick
+immune_destruction = 0.75; % if the virus is recognized, this is the probability that a virus will be eliminated for every time tick
 nTime = 40; % number of time ticks
 viability = ones(1, nBase); % viability of viral sequence as a function of number of mutations
 viability(5:end)=0; % sequences with 4 or more mutations from sequences which are known to be viable initially are destroyed
-% viability can be expanded to not be a step function, but this means that
-% all sequences to ever appear and their viability needs to be remembered
 
 % Initialization of variables which record viral info over time
 t=0:nTime;
 recorded_sequence=sequence;
-recorded_sequence_time=cell(1, nSequence);
-recorded_sequence_growth=cell(1, nSequence);
-recorded_sequence_mutation=cell(1, nSequence);
-recorded_sequence_number=cell(1, nSequence);
-recorded_sequence_recognition_time=zeros(1, nSequence);
-recorded_sequence_recognition=false(1, nSequence);
-for iSequence=1:nSequence
+recorded_sequence_time=cell(1, nSequenceInitial);
+recorded_sequence_growth=cell(1, nSequenceInitial);
+recorded_sequence_mutation=cell(1, nSequenceInitial);
+recorded_sequence_number=cell(1, nSequenceInitial);
+recorded_sequence_recognition_time=zeros(1, nSequenceInitial);
+recorded_sequence_recognition=false(1, nSequenceInitial);
+for iSequence=1:nSequenceInitial
     recorded_sequence_time{iSequence}(1)=0;
     recorded_sequence_number{iSequence}(1)=sequence_number(iSequence);
     recorded_sequence_growth{iSequence}(1)=sequence_growth(iSequence);
     recorded_sequence_mutation{iSequence}(1)=sequence_mu_v(iSequence);
 end
-
 average_mutation = zeros(1, nTime+1);
-average_mutation(1) = sum(sequence_number.*sequence_growth)/sum(sequence_number);
+average_mutation(1) = sum(sequence_number.*sequence_mu_v)/sum(sequence_number);
 average_growth = zeros(1, nTime+1);
-average_growth(1) = sum(sequence_number.*sequence_mu_v)/sum(sequence_number);
-
-sequence_plusnonviable = sequence; % viability memory, only necessary non-step-function viability
-sequence_viable = true(1, nSequence); % viability memory, only necessary non-step-function viability
-sequence_viable_initial = true(1, nSequence); % viability when compared to initial sequences
+average_growth(1) = sum(sequence_number.*sequence_growth)/sum(sequence_number);
+sequence_viable_initial = true(1, nSequenceInitial); % viability when compared to initial sequences
 
 for iTime=1:nTime
     
-    % Evaluate for each virus whether it grows
-    nSequence = length(sequence); % number of viruses
-    for iSequence=1:nSequence
-        initialNumber=sequence_number(iSequence);
-        for iSequenceNumber=1:initialNumber
+    % Go through each different virus and evaluate whether it grows or mutates 
+    nSequence = length(sequence); % number of different sequences
+    for iSequence=1:nSequence % current sequence is sequence{iSequence}
+        
+        initialNumber = sequence_number(iSequence); % number of viruses
+        for iSequenceNumber=1:initialNumber % current virus
+            
+            % Virus can grow depending on its growth probability
             if rand(1)<sequence_growth(iSequence)
 
-                % go through each base and evaluate whether it mutates
-                new_sequence=sequence{iSequence};
+                % When the virus replicates, it might mutate. The mutation
+                % probability is applied on each base.
+                new_sequence=sequence{iSequence}; % initialize new sequence as old sequence
                 for iBase=1:nBase
+                    
                     % if a mutation happens, change the base to another one
                     if rand(1)<sequence_mu_v(iSequence)
                         current_base = sequence{iSequence}(iBase);
@@ -69,36 +68,48 @@ for iTime=1:nTime
                         new_base = current_possible_bases(ceil(rand(1)*(nPossibleBases-1)));
                         new_sequence(iBase) = new_base;
                     end
+                    
                 end
 
-            % if the new sequence generated is part of old
-            % sequences, add a number to that old sequence
+            % if the new sequence generated is part of old sequences, 
+            % simply add 1 to the respective sequence virus number
             new_sequence_comparison = strcmp(sequence, new_sequence);
             if any(new_sequence_comparison)
                 new_sequence_index = find(new_sequence_comparison);
                 sequence_number(new_sequence_index)=sequence_number(new_sequence_index)+1;
                 
-            % else it must be new and you should grow the sequence array
+            % else it must be a new sequence
             else
                 
-                % always add this sequence to sequence_plusnonviable
-                
-                % only add this sequence if its distance to initial
-                % sequences is viable, or if its remembered to be viable
-                for iInitialSequence=1:length(sequence_initial)
-                   initial_viable_index = sum(new_sequence~=sequence_initial{iInitialSequence});
-                   if initial_viable_index>0
-                        sequence_viable_initial(iInitialSequence) = viability(initial_viable_index); 
-                   end
+                % Check whether new sequence is viable compared to all
+                % initial sequences
+                for iInitialSequence=1:nSequenceInitial
+                    
+                    % Number of mutations (distance from initial sequences)
+                    nMutation = sum(new_sequence~=sequence_initial{iInitialSequence});
+                    
+                    % Check viability as a function of number of mutations
+                    % and assign boolean for each initial sequence
+                    if nMutation>0
+                        sequence_viable_initial(iInitialSequence) = viability(nMutation); 
+                    end
+                    
                 end
                 
+                % If the sequence is viable compared to any of the
+                % initial sequences, it is viable.
+                % The new sequence can be added to the sequence cell array.
                 if any(sequence_viable_initial)
                     
+                    % Add new sequence
                     nNewSequence=length(sequence)+1;
                     sequence{nNewSequence}=new_sequence;
                     sequence_number(nNewSequence)=1;
                     sequence_recognition(nNewSequence)=false;                
 
+                    % Add new sequence growth probability by randomly changing
+                    % the growth probability of the unmutated sequence in a
+                    % defined range.
                     sequence_growth(nNewSequence)=sequence_growth(iSequence)+(rand(1)-0.5)*growth_mutation_range;
                     if sequence_growth(nNewSequence)<0
                         sequence_growth(nNewSequence)=0;
@@ -106,6 +117,9 @@ for iTime=1:nTime
                         sequence_growth(nNewSequence)=1;
                     end
 
+                    % Add new sequence mutation probability by randomly changing
+                    % the mutation probability of the unmutated sequence in a
+                    % defined range.
                     sequence_mu_v(nNewSequence)=sequence_mu_v(iSequence)+(rand(1)-0.5)*mu_v_mutation_range;
                     if sequence_mu_v(nNewSequence)<0
                         sequence_mu_v(nNewSequence)=0;
@@ -160,9 +174,6 @@ for iTime=1:nTime
     recorded_sequence_growth=[recorded_sequence_growth, cell(1, length(recorded_sequence)-length(recorded_sequence_growth))];
     recorded_sequence_number=[recorded_sequence_number, cell(1, length(recorded_sequence)-length(recorded_sequence_number))];
     recorded_sequence_recognition=[recorded_sequence_recognition, false(1, length(recorded_sequence)-length(recorded_sequence_number))];
-    % length of recorded_sequence_time and recorded_sequence_number should
-    % be the same as length of recorded_sequence, this can be done by
-    % initialization
     for iRecordedSequence=1:length(recorded_sequence)
         
         recorded_sequence_in_sequence = strcmp(sequence, recorded_sequence{iRecordedSequence});
@@ -191,13 +202,15 @@ for iTime=1:nTime
 
 end
 
-recorded_sequence
+% Display all generated sequences
+disp(recorded_sequence)
 
+% Plot time courses of virus numbers for each sequence
 figure
-nSequence = length(recorded_sequence_number);
+nSequenceRecorded = length(recorded_sequence_number);
 total_virus_number_end=0;
-virus_number_end = zeros(1, nSequence);
-for iSequence=1:nSequence
+virus_number_end = zeros(1, nSequenceRecorded);
+for iSequence=1:nSequenceRecorded
     plot(recorded_sequence_time{iSequence}, recorded_sequence_number{iSequence})
     hold on
     
@@ -208,8 +221,12 @@ title('Virus count time series')
 xlabel('Time')
 ylabel('Virus count')
 
-total_virus_number_end
+% Display total virus count
+disp(total_virus_number_end)
 
+% Plot sequences in 2D space by calculating distances between sequences and
+% using dimensional reduction (MDS). Size and color of sequences varies 
+% with virus number.
 figure
 set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
 tic
@@ -226,6 +243,7 @@ title('Sequence scatter plot, dimensional reduction with MDS on Jukes-Cantor dis
 xlabel('MDS 1')
 ylabel('MDS 2')
 
+% Plot average growth and mutation probabilities over time
 figure
 plot(t, average_growth)
 hold on
