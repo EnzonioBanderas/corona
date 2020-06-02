@@ -2,63 +2,9 @@ clear all
 close all
 
 % Implementation of SIR model and viral evolution model with Gillespie
-% algorithm.
+% algorithm. Constant alpha but dosed at different time t 
 % TOTAL RUNTIME ~ 10 mins.
 
-%% SIR model with Gillespie algortithm
-% Source: Wikipedia https://en.wikipedia.org/wiki/Gillespie_algorithm
-
-% Initialize
-N = 1000;                                                                   % population size
-T = 50;                                                                     % Maximum elapsed time
-t = 0;                                                                      % start time
-V = 100;                                                                    % Spatial parameter 
-alpha = 0.5;                                                                % rate of infection after contact
-beta = 0.5;                                                                 % rate of cure
-n_I = 1;                                                                    % initial infected population
-
-% Compute susceptible popultion, set recovered to zero
-n_S = N - n_I;
-n_R = 0;
-
-% Start time loop
-s = 0;
-while t < T
-    s = s + 1;
-    if n_I == 0                                                             % Stop loop if there are no more individuals infected
-        break
-    end
-    % compute reaction rates
-    w1 = alpha * n_S * n_I / V;                                             % first reaction: rate with which a susceptible person gets infected
-    w2 = beta * n_I;                                                        % second reaction: rate with which an infected person is cured
-    W = w1 + w2;                                                            % total rate
-    % compute time step
-    dt = -log(rand) / W;                                                    % time step is exponentially distributed and depends on total reaction rate
-    t = t + dt;
-    % choose which reaction occurs in this time step
-    if rand < w1 / W                                                        % first reaction: S -> I                                                  
-        n_S = n_S - 1;
-        n_I = n_I + 1;
-    else                                                                    % second reaction: I -> R
-        n_I = n_I - 1;
-        n_R = n_R + 1;
-    end
-    % collect statistics
-    SIR_data(s,:) = [t, n_S, n_I, n_R];                                    
-end
-
-% Plot 
-t = SIR_data(:,1);
-n_S = SIR_data(:,2);
-n_I = SIR_data(:,3);
-n_R = SIR_data(:,4);
-
-figure()
-plot(t,n_S,'r', t,n_I,'b', t,n_R,'g')
-title('Stochastic SIR model with Gillespie algorithm')
-xlabel('Time (days)')
-ylabel('Number of individuals')
-legend('Susceptible', 'Infected', 'Removed')
 
 %% Viral evolution with Gillespie algorithm
 
@@ -87,13 +33,10 @@ T = 15;                     % maximal time (days)
 
 antiviral = false;          %setting antiviral to zero initially 
 
-alpha_array =[0.7];
+alpha_array =[0.5];
 %mu_array = [1e-5];
-mu_array = linspace(0,0.1,50);
-%alpha_array = linspace(0,1,10);
-t 
-%alpha_array = [0.1, 0.5];
-%mu_array    = [0.001, 0.0001];  % mutation rate(s). Can be a single float (one mutation rate) or an array.
+doseday_array = [0,1,2,3,4,5,6]
+mu_array = linspace(0,0.1,10);
 
 WTseq = 'catacacaagga';     % initial genome sequence
 refAseq = 'HTQG';           % reference aa sequence (with highest fitness). 
@@ -102,9 +45,9 @@ r0 = 6.0;                   % Fitness of reference sequence
 
 infection = boolean(zeros(1,length(mu_array)));     % store whether a full infection occurred
 
-% Start for-loop over error rates #########################################
-for v = 1:length(alpha_array)
-    alpha = alpha_array(v);
+% Start for-loop over times  #########################################
+for d = 1:length(doseday_array)
+    alphaD = alpha_array(v);
     disp(['alpha = ', num2str(alpha)]) 
     
 % Start for-loop over error rates #########################################
@@ -139,7 +82,7 @@ for v = 1:length(alpha_array)
              if sum(I+V) == 0                                                  	% Stop if there are no more viral particles left
                  break
              end
-             if t > 4 && antiviral == false;
+             if t > days && antiviral == false;
                  r  = alpha *  r;
                  r0 = alpha * r0;
                  antiviral = true;
