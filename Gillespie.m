@@ -5,60 +5,60 @@ close all
 % algorithm.
 % TOTAL RUNTIME ~ 10 mins.
 
-%% SIR model with Gillespie algortithm
-% Source: Wikipedia https://en.wikipedia.org/wiki/Gillespie_algorithm
-
-% Initialize
-N = 1000;                                                                   % population size
-T = 50;                                                                     % Maximum elapsed time
-t = 0;                                                                      % start time
-V = 100;                                                                    % Spatial parameter 
-alpha = 0.5;                                                                % rate of infection after contact
-beta = 0.5;                                                                 % rate of cure
-n_I = 1;                                                                    % initial infected population
-
-% Compute susceptible popultion, set recovered to zero
-n_S = N - n_I;
-n_R = 0;
-
-% Start time loop
-s = 0;
-while t < T
-    s = s + 1;
-    if n_I == 0                                                             % Stop loop if there are no more individuals infected
-        break
-    end
-    % compute reaction rates
-    w1 = alpha * n_S * n_I / V;                                             % first reaction: rate with which a susceptible person gets infected
-    w2 = beta * n_I;                                                        % second reaction: rate with which an infected person is cured
-    W = w1 + w2;                                                            % total rate
-    % compute time step
-    dt = -log(rand) / W;                                                    % time step is exponentially distributed and depends on total reaction rate
-    t = t + dt;
-    % choose which reaction occurs in this time step
-    if rand < w1 / W                                                        % first reaction: S -> I                                                  
-        n_S = n_S - 1;
-        n_I = n_I + 1;
-    else                                                                    % second reaction: I -> R
-        n_I = n_I - 1;
-        n_R = n_R + 1;
-    end
-    % collect statistics
-    SIR_data(s,:) = [t, n_S, n_I, n_R];                                    
-end
-
-% Plot 
-t = SIR_data(:,1);
-n_S = SIR_data(:,2);
-n_I = SIR_data(:,3);
-n_R = SIR_data(:,4);
-
-figure()
-plot(t,n_S,'r', t,n_I,'b', t,n_R,'g')
-title('Stochastic SIR model with Gillespie algorithm')
-xlabel('Time (days)')
-ylabel('Number of individuals')
-legend('Susceptible', 'Infected', 'Removed')
+% %% SIR model with Gillespie algortithm
+% % Source: Wikipedia https://en.wikipedia.org/wiki/Gillespie_algorithm
+% 
+% % Initialize
+% N = 1000;                                                                   % population size
+% T = 50;                                                                     % Maximum elapsed time
+% t = 0;                                                                      % start time
+% V = 100;                                                                    % Spatial parameter 
+% alpha = 0.5;                                                                % rate of infection after contact
+% beta = 0.5;                                                                 % rate of cure
+% n_I = 1;                                                                    % initial infected population
+% 
+% % Compute susceptible popultion, set recovered to zero
+% n_S = N - n_I;
+% n_R = 0;
+% 
+% % Start time loop
+% s = 0;
+% while t < T
+%     s = s + 1;
+%     if n_I == 0                                                             % Stop loop if there are no more individuals infected
+%         break
+%     end
+%     % compute reaction rates
+%     w1 = alpha * n_S * n_I / V;                                             % first reaction: rate with which a susceptible person gets infected
+%     w2 = beta * n_I;                                                        % second reaction: rate with which an infected person is cured
+%     W = w1 + w2;                                                            % total rate
+%     % compute time step
+%     dt = -log(rand) / W;                                                    % time step is exponentially distributed and depends on total reaction rate
+%     t = t + dt;
+%     % choose which reaction occurs in this time step
+%     if rand < w1 / W                                                        % first reaction: S -> I                                                  
+%         n_S = n_S - 1;
+%         n_I = n_I + 1;
+%     else                                                                    % second reaction: I -> R
+%         n_I = n_I - 1;
+%         n_R = n_R + 1;
+%     end
+%     % collect statistics
+%     SIR_data(s,:) = [t, n_S, n_I, n_R];                                    
+% end
+% 
+% % Plot 
+% t = SIR_data(:,1);
+% n_S = SIR_data(:,2);
+% n_I = SIR_data(:,3);
+% n_R = SIR_data(:,4);
+% 
+% figure()
+% plot(t,n_S,'r', t,n_I,'b', t,n_R,'g')
+% title('Stochastic SIR model with Gillespie algorithm')
+% xlabel('Time (days)')
+% ylabel('Number of individuals')
+% legend('Susceptible', 'Infected', 'Removed')
 
 %% Viral evolution with Gillespie algorithm
 
@@ -79,19 +79,23 @@ clear all
 La = 4.0;                   % length of AA sequence
 a = 1.0e-3;                 % infection rate per day.                   %NOT ESTIMATED
 b = 1.5;                    % death/clearence rate of infected cells per day.
+stim = 1;                   % stimulation rate of T cells per day.
+k = 1;                      % immune killing of infected cells per day.
 V0 = 400;                   % initial number of viruses
-U0 = 1.11e5;                % initial number of not-infected cells      %ESTIMATED
+U0 = 1.11e5;                % initial number of non-infected cells      %ESTIMATED
 ksi = 1.0;                 	% fitness decay
 sigma = 0.1;                % standard deviation of fitness
 T = 15;                     % maximal time (days)
 
-antiviral = false;          %setting antiviral to zero initially 
+antiviral = false;          % setting antiviral to zero initially 
+
+immune_selection = true;   % if true, replace equation 3 with extended immune selection infected cell clearance
 
 alpha_array =[0.7];
 %mu_array = [1e-5];
-mu_array = linspace(0,0.1,50);
+mu_array = linspace(0,0.05,2);
 %alpha_array = linspace(0,1,10);
-t 
+
 %alpha_array = [0.1, 0.5];
 %mu_array    = [0.001, 0.0001];  % mutation rate(s). Can be a single float (one mutation rate) or an array.
 
@@ -126,6 +130,7 @@ for v = 1:length(alpha_array)
         % arrays to collect stats
         V = [V0];                                                               % array for number of viruses of all strains
         I = [0];                                                                % array for number of infected cells of all strains
+        S = [0];                                                                % array for number of immune cells specific to strains
         Y = [V(1), zeros(1, length(WTseq))];                                    % matrix for number of viruses with distance d from WT seq.
         r = [r0];                                                               % array for fitnesses 
         d = [d0];                                                               % array for distances
@@ -139,12 +144,71 @@ for v = 1:length(alpha_array)
              if sum(I+V) == 0                                                  	% Stop if there are no more viral particles left
                  break
              end
-             if t > 4 && antiviral == false;
+             if t > 4 && antiviral == false
                  r  = alpha *  r;
                  r0 = alpha * r0;
                  antiviral = true;
              end
+             
+             I_s(s) = I(1);
+             S_s(s) = S(1);
+             
              s = s + 1;                                                         % counter
+             
+             if immune_selection % Replace R3 with 3 immune system reactions
+             
+              % calculate total reaction rate
+             Rtot = (a*U + b)*sum(V) + stim*sum(I) + k*sum(S) + b*sum(S) + sum(r.*I);                        
+             % take time step
+             dt = (1/Rtot) * log(1/rand);                                       % time step is exponentially distributed and depends on total reaction rate
+             t = t + dt;
+             % choose a random number between 0 and Rtot
+             rnd = Rtot * rand;
+             c = 0;
+             
+             % loop over viral strains
+             for i = 1:ntot                     
+                 % choose which of the 4 reactions will occur 
+                 % and for which strain
+                 c = c + a*U*V(i);                                              % R1: infection by strain i
+                 if c > rnd                                                         
+                     I(i) = I(i) + 1;                                               
+                     V(i) = V(i) - 1;
+                     U = U - 1;                                                    
+                     break
+                 end
+                 c = c + r(i)*I(i);                                             % R2: replication of strain i
+                 if c > rnd
+                     i0 = i;
+                     [seq, aseq, ntot, V, r, I, d] = ...
+                         replicate(i, seq, aseq, mu, ntot, V, r, I, d, ksi, sigma,r0, refAseq);
+                     break
+                 end
+                 c = c + b*V(i);                                                % R4: clearence of a free viral particle of strain i
+                 if c > rnd
+                     V(i) = V(i) - 1;
+                     break
+                 end
+%                  iAmino = find(strcmp(aseq_unique_alltime, aseq(i)));
+                 c = c + stim*I(i);                                             % Stimulation: Infected cell stimulates formation of T-cell specific to virus
+                 if c > rnd
+                     S(i) = S(i) + 1;
+                     break
+                 end
+                 c = c + k*I(i)*S(i);                                            % Killing: Cytotoxic T cells kill infected cells
+                 if c > rnd
+                     I(i) = I(i) - 1;
+                     break
+                 end
+                 c = c + b*S(i);                                                % Clearance: Immune cells die
+                 if c > rnd
+                     S(i) = S(i) - 1;
+                     break
+                 end
+             end % for-loop
+             
+             else
+                 
              % calculate total reaction rate
              Rtot = (a*U + b)*sum(V) + b*sum(I) + sum(r.*I);                        
              % take time step
@@ -153,6 +217,7 @@ for v = 1:length(alpha_array)
              % choose a random number between 0 and Rtot
              rnd = Rtot * rand;
              c = 0;
+                 
              % loop over viral strains
              for i = 1:ntot    
                  % choose which of the 4 reactions will occur 
@@ -182,17 +247,26 @@ for v = 1:length(alpha_array)
                      break
                  end
              end % for-loop
+                 
+             end
+             
+             
+             % lengthen S
+             S = [S, zeros(1, length(I)-length(S))];
+             
+             
              % remove strains that have gone extinct
-             [seq, aseq, V, I, r, d, ntot] = ...
-                 remove(seq, aseq, V, I, r, d, ntot);
+             [seq, aseq, V, I, r, d, S, ntot] = ...
+                 remove(seq, aseq, V, I, r, d, S, ntot);
              % collect statistics every 100 iterations and at the end
              if mod(s,100) == 0 %|| sum(I+V) == 0
                  nAA = length(unique(aseq));
                  m = m + 1;             
                  for j = 1:size(Y,2)
                     dist = j - 1;
-                    sumV = sum(V(d == dist));
-                    sumI = sum(I(d == dist));
+                    d_logical = d == dist;
+                    sumV = sum(V(d_logical));
+                    sumI = sum(I(d_logical));
                     Y(m,j) = sumV + sumI;
                  end
                  meanFitness(m) = sum(r.*(V+I)) / sum(V+I);
@@ -348,6 +422,9 @@ function [seq, aseq, ntot, V, r, I, d] = ...
         ntot = ntot + 1;
         seq{ntot} = newsequence;
         aseq{ntot} = nt2aa(newsequence);
+%         if ~any(strcmp(aseq_unique_alltime, aseq{ntot})) % if the new AA sequence was not present in unique yet, add it to unique
+%             aseq_unique_alltime{ntot} = aseq{ntot};
+%         end
         V(ntot) = 1;
         di = distance(refSeq, aseq{ntot});
         d(ntot) = di;
@@ -356,16 +433,17 @@ function [seq, aseq, ntot, V, r, I, d] = ...
     end
 end
 
-function [seq, aseq, V, I, r, d, ntot] = ...
-             remove(seq, aseq, V, I, r, d, ntot)
-    extinct = find(V+I == 0);  
-    if ~isempty(extinct)
+function [seq, aseq, V, I, r, d, S, ntot] = ...
+             remove(seq, aseq, V, I, r, d, S, ntot)
+    extinct = V+I+S == 0;  
+    if any(extinct)
         V(extinct) = [];
         I(extinct) = [];
         seq(extinct) = [];
         aseq(extinct) =[];
         r(extinct) = [];
         d(extinct) = [];
-        ntot = ntot - length(extinct);
+        S(extinct) = [];
+        ntot = ntot - sum(extinct);
     end
 end
