@@ -5,7 +5,7 @@ function [beta0, beta1] = logisticRegressionProteins()
 % proteins.
 
     % load the data
-    data = load('mismatchBoolean0602.mat');
+    data = load('Data/mismatchBoolean0602.mat');
     mismatchBoolean = data.mismatchBoolean;
     proteinNames = fields(mismatchBoolean);
     % remove NSP11:

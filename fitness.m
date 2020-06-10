@@ -10,8 +10,9 @@ function r = fitness(d, r0, sigma, pInfo)
         protein = pNames{i};
         b = pInfo.(protein).betas;
         mu = predict(b', d(i));
-        rArray(i) = min(max(sigma*randn + mu, 0), 1);
+        rArray(i) = max(sigma*randn + mu, 0);
     end
 
+    %r = rArray;
     r = r0 * prod(rArray);
 end

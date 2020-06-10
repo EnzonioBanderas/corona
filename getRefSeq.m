@@ -1,8 +1,8 @@
 function [gRefSeq, pRefSeq, pNames, pInfo] = getRefSeq()
 
     % Load data
-    pData = load('refSeqProtein.mat');
-    gData = load('refSeqGenome.mat');
+    pData = load('Data/refSeqProtein.mat');
+    gData = load('Data/refSeqGenome.mat');
     gData = gData.refseq;
     pData = pData.proteinref.Translation;
     
