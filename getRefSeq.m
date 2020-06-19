@@ -1,4 +1,4 @@
-function [gRefSeq, pRefSeq, pNames, pInfo] = getRefSeq()
+function [gRefSeq, pRefSeq, pNames, pInfo, proteinLocation, genomeLocation] = getRefSeq()
 
     % Load data
     pData = load('Data/refSeqProtein.mat');
@@ -25,6 +25,8 @@ function [gRefSeq, pRefSeq, pNames, pInfo] = getRefSeq()
     end
     % Collect starting and ending locations of each protein
     pInfo = struct();                                                       % structure containing start and end of all proteins
+    proteinLocation = zeros(length(pNames), 2);
+    genomeLocation = proteinLocation;
     startP = 1;                                                             % start of protein in protein sequence
     startG = 1;                                                             % start of protein in genome sequence
     for i = 1:length(pNames)
@@ -34,5 +36,9 @@ function [gRefSeq, pRefSeq, pNames, pInfo] = getRefSeq()
         pInfo.(protein).('genomeLocation') = [startG, min(startG + 3*L, length(gRefSeq))];
         startP = startP + L;
         startG = startG + 3*L;
+        
+        proteinLocation(i, :) = pInfo.(protein).('proteinLocation');
+        genomeLocation(i, :) = pInfo.(protein).('genomeLocation');
+        
     end
 end

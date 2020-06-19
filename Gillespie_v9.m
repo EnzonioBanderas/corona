@@ -1,5 +1,5 @@
-clear all 
-close all
+clear all
+% close all
 
 %% Viral evolution with Gillespie algorithm
 
@@ -14,7 +14,8 @@ close all
 % Death : In -> 0             (R3) rate = b
 % Clearence: Vn -> 0          (R4) rate = b
 %% Get protein and genome reference sequences #############################
-[gRefSeq, pRefSeq, pNames, pInfo] = getRefSeq();
+[gRefSeq, pRefSeq, pNames, pInfo, proteinLocation, genomeLocation] = getRefSeq();
+translateCodon = geneticcode();
 [beta0, beta1] = logisticRegressionProteins();
 % Store betas of logistic regression in pInfo
 for i = 1:length(pNames)
@@ -33,6 +34,7 @@ ksi = 1.0;                 	% fitness decay
 sigma = 0.1;                % standard deviation of fitness
 T = inf;                    % maximal time (days)
 mu_array = linspace(1e-6, 1e-3,5);                 % mutation rate(s). Can be a single float (one mutation rate) or an array.
+mu_array = 1e-3;
 N_mu = length(mu_array);                            % number of mutation rates to test
 d0 = zeros(length(pNames),1);                       % distance of WTseq to fittest strain
 r0 = 2;                                             % Fitness of reference sequence 
@@ -52,9 +54,12 @@ for k = 1:N_mu
     % initialize
     disp(mu)
     U = U0;                                                                 % number of infected cells.
-    seq = cell(1,S); aseq = cell(1,S);
-    seq{1} = gRefSeq;                                                     	% cell array to keep track of nt sequences
-    aseq{1} = pRefSeq;                                                      % cell array to keep track of aa sequences   
+    seq_loc = cell(1,S); aseq_loc = cell(1,S);                                % number of infected cells.
+    seq_mut = cell(1,S); aseq_mut = cell(1,S);
+    seq_nMut = zeros(1,S);
+%     seq{1} = cell(1,2); aseq{1} = cell(1,2);
+%     seq{1} = [];                                                     	% cell array to keep track of nt sequences
+%     aseq{1} = [];                                                      % cell array to keep track of aa sequences   
     % counters
     ntot = 1;                                                               % initial number of distinct viral genotypes
     nAA = 1;                                                                % initial number of distinct viral phenotypes
@@ -105,8 +110,9 @@ for k = 1:N_mu
              r = [r, zeros(1,S)];
              d = [d, zeros(length(pNames), S)];
              dtot = [dtot, zeros(1,S)];
-             seq = [seq, cell(1,S)];
-             aseq = [aseq, cell(1,S)];
+             seq_loc = [seq_loc, cell(1,S)]; aseq_loc = [aseq_loc, cell(1,S)];
+             seq_mut = [seq_mut, cell(1,S)]; aseq_mut = [aseq_mut, cell(1,S)];
+             seq_nMut = [seq_nMut, zeros(1,S)];
          end
          % loop over viral strains
          for i = 1:find(V+I, 1,'last')    
@@ -122,9 +128,10 @@ for k = 1:N_mu
              c = c + r(i)*I(i);                                             % R2: replication of strain i
              if c > rnd
                  i0 = i;
-                 [seq, aseq, ntot, nAA, V, r, I, d, dtot] = ...
-                     replicate(i0, seq, aseq, mu, ntot, nAA, V, r, I, d, dtot, ... 
-                     sigma,r0, pRefSeq, pInfo);
+                 [seq_loc, seq_mut, aseq_loc, aseq_mut, ntot, nAA, V, r, I, d, dtot, seq_nMut] = ...
+                     replicate(i0, seq_loc, seq_mut, aseq_loc, aseq_mut, mu, ...
+                     ntot, nAA, V, r, I, d, dtot, ... 
+                     sigma,r0, gRefSeq, L, pRefSeq, pInfo, seq_nMut, proteinLocation, translateCodon);
                  break
              end
              c = c + b*I(i);                                                % R3: clearence of a cell infected by strain i
@@ -132,8 +139,8 @@ for k = 1:N_mu
                  I(i) = I(i) - 1;
                  if V(i) + I(i) == 0    % if the strain has gone extinct, remove it
                      i0 = i;
-                     [seq, aseq, V, I, r, d, dtot, ntot, nAA] = ...
-                         remove(i0, seq, aseq, V, I, r, d, dtot, ntot, nAA);
+                     [seq_loc, seq_mut, aseq_loc, aseq_mut, V, I, r, d, dtot, ntot, nAA, seq_nMut] = ...
+                         remove(i0, seq_loc, seq_mut, aseq_loc, aseq_mut, V, I, r, d, dtot, ntot, nAA, seq_nMut);
                  end
                  break % for-loop
              end
@@ -142,8 +149,8 @@ for k = 1:N_mu
                  V(i) = V(i) - 1;
                  if V(i) + I(i) == 0    % if the strain has gone extinct, remove it
                      i0 = i;
-                     [seq, aseq, V, I, r, d, dtot, ntot, nAA] = ...
-                         remove(i0, seq, aseq, V, I, r, d, dtot, ntot, nAA);
+                     [seq_loc, seq_mut, aseq_loc, aseq_mut, V, I, r, d, dtot, ntot, nAA, seq_nMut] = ...
+                         remove(i0, seq_loc, seq_mut, aseq_loc, aseq_mut, V, I, r, d, dtot, ntot, nAA, seq_nMut);
                  end
                  break % for-loop
              end
@@ -202,10 +209,12 @@ for k = 1:N_mu
     statR(k) = sum(meanFitness(2:end) .* delta_t) / time(end); 
     % Collect error threshold detectors
     Uarray(k) = U;
+    titer(k).a = a;
     titer(k).Mu = mu;
    	titer(k).Time = data(:,1);
     titer(k).ntot = V;
     titer(k).I = I;
+    titer(k).data = data;
     titer(k).Load = data(:,5) + data(:,6);
 end % for-loop
 save('Gillespie.mat','-v7.3');

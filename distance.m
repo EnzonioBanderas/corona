@@ -1,19 +1,16 @@
-function dist = distance(refseq, seq, pInfo)
+function dist = distance(aseq_loc, proteinLocation)
 % This function calculates the Hamming distance between the reference
 % sequence and another sequence, for all proteins.
 % dist = a column vector with distances of all proteins.
+    nProt = size(proteinLocation, 1);
+    dist = zeros(nProt, 1);
     
-    pNames = fields(pInfo);
-    dist = zeros(length(pNames),1);
-    
-    for i = 1:length(pNames)
-        protein = pNames{i};
-        startP = pInfo.(protein).proteinLocation(1);
-        endP = pInfo.(protein).proteinLocation(2);
+    for i = 1:nProt
+        startP = proteinLocation(i, 1);
+        endP = proteinLocation(i, 2);
                 
-        pRefSeq = refseq(startP:endP);
-        pSeq = seq(startP:endP);
+        % Count number of mutations within protein location boundaries
+        dist(i) = sum((aseq_loc >= startP) & (aseq_loc <= endP));
         
-        dist(i) = sum(pRefSeq ~= pSeq);
     end
 end

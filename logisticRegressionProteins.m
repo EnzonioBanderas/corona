@@ -62,6 +62,6 @@ function b = logisticRegression(X, y, alpha)
     [m, n] = size(X);
     b0 = zeros((n+1),1);
     % Gradient descent
-    options = optimset('GradObj', 'on', 'MaxIter', 400);
+    options = optimset('GradObj', 'on', 'MaxIter', 400, 'Display', 'off');
     b = fminunc(@(t)computeCost(t, X, y, alpha), b0, options);
 end
