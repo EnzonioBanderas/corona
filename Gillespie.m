@@ -34,7 +34,6 @@ ksi = 1.0;                 	% fitness decay
 sigma = 0.1;                % standard deviation of fitness
 T = inf;                    % maximal time (days)
 mu_array = linspace(1e-6, 1e-3,5);                 % mutation rate(s). Can be a single float (one mutation rate) or an array.
-mu_array = 1e-3;
 N_mu = length(mu_array);                            % number of mutation rates to test
 d0 = zeros(length(pNames),1);                       % distance of WTseq to fittest strain
 r0 = 2;                                             % Fitness of reference sequence 
