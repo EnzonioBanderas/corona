@@ -1,6 +1,8 @@
 clear all
 % close all
 
+myStream=RandStream('mlfg6331_64', 'Seed', 'shuffle');
+
 %% Viral evolution with Gillespie algorithm
 
 % Source of model: 
@@ -34,6 +36,9 @@ ksi = 1.0;                 	% fitness decay
 sigma = 0.1;                % standard deviation of fitness
 T = inf;                    % maximal time (days)
 mu_array = linspace(1e-6, 1e-3,5);                 % mutation rate(s). Can be a single float (one mutation rate) or an array.
+mu_array = ones(1,1)*1e-4;
+nIter_record = 100;                                 % record every 100 iterations
+nIter_print = 1000;                                 % print every 1000 iterations
 N_mu = length(mu_array);                            % number of mutation rates to test
 d0 = zeros(length(pNames),1);                       % distance of WTseq to fittest strain
 r0 = 2;                                             % Fitness of reference sequence 
@@ -55,7 +60,15 @@ for k = 1:N_mu
     U = U0;                                                                 % number of infected cells.
     seq_loc = cell(1,S); aseq_loc = cell(1,S);                                % number of infected cells.
     seq_mut = cell(1,S); aseq_mut = cell(1,S);
-    seq_nMut = zeros(1,S);
+    seq_nMut = zeros(1,S); aseq_nMut = zeros(1, S);
+    nAA_alltime_unique = 1;
+    aseq_alltime_unique_n = zeros(1,S);
+    aseq_alltime_unique_n(1) = 1;
+    aseq_alltime_unique_loc = cell(1,S);
+    aseq_alltime_unique_mut = cell(1,S);
+    aseq_alltime_unique_nMut = zeros(1, S);
+    r_alltime_unique = zeros(1,S);
+    r_alltime_unique(1) = r0;      
 %     seq{1} = cell(1,2); aseq{1} = cell(1,2);
 %     seq{1} = [];                                                     	% cell array to keep track of nt sequences
 %     aseq{1} = [];                                                      % cell array to keep track of aa sequences   
@@ -76,7 +89,7 @@ for k = 1:N_mu
     dtot = zeros(1, S);                                                     % total distance to reference (sum of all proteins) per strain
     % arrays to collect stats
     Y = zeros(S, La + 1);                                                   % matrix for number of viruses with distance d from WT seq.
-   	Y(1,1) = V(1);                                                      	
+   	Y(1,1) = V(1);      
     
     data = zeros(S, 6);                                                     % matrix to collect time, # distinct genotypes, # distinct phenotypes, # not-infected cells, # infected cells, # viruses.
   	data(1,:) = [t, ntot, nAA, U, sum(I), sum(V)];                          
@@ -97,10 +110,10 @@ for k = 1:N_mu
          % calculate total reaction rate
          Rtot = (a*U + b)*sum(V) + b*sum(I) + sum(r.*I);                                          
          % take time step
-         dt = (1/Rtot) * log(1/rand);                                       % time step is exponentially distributed and depends on total reaction rate
+         dt = (1/Rtot) * log(1/rand(myStream));                                       % time step is exponentially distributed and depends on total reaction rate
          t = t + dt;
          % choose a random number between 0 and Rtot
-         rnd = Rtot * rand;
+         rnd = Rtot * rand(myStream);
          c = 0;
          % Increase the size of arrays if it is necessary
          if find(V+I, 1,'last') + 10 > length(V)
@@ -111,7 +124,14 @@ for k = 1:N_mu
              dtot = [dtot, zeros(1,S)];
              seq_loc = [seq_loc, cell(1,S)]; aseq_loc = [aseq_loc, cell(1,S)];
              seq_mut = [seq_mut, cell(1,S)]; aseq_mut = [aseq_mut, cell(1,S)];
-             seq_nMut = [seq_nMut, zeros(1,S)];
+             seq_nMut = [seq_nMut, zeros(1,S)]; aseq_nMut = [aseq_nMut, zeros(1,S)];
+         end
+         if nAA_alltime_unique + 10 > length(aseq_alltime_unique_n)
+            aseq_alltime_unique_n = [aseq_alltime_unique_n, zeros(1,S)];
+            aseq_alltime_unique_loc = [aseq_alltime_unique_loc, cell(1,S)];
+            aseq_alltime_unique_mut = [aseq_alltime_unique_mut, cell(1,S)];
+            aseq_alltime_unique_nMut = [aseq_alltime_unique_nMut, zeros(1,S)];
+            r_alltime_unique = [r_alltime_unique, zeros(1,S)];
          end
          % loop over viral strains
          for i = 1:find(V+I, 1,'last')    
@@ -127,10 +147,19 @@ for k = 1:N_mu
              c = c + r(i)*I(i);                                             % R2: replication of strain i
              if c > rnd
                  i0 = i;
-                 [seq_loc, seq_mut, aseq_loc, aseq_mut, ntot, nAA, V, r, I, d, dtot, seq_nMut] = ...
-                     replicate(i0, seq_loc, seq_mut, aseq_loc, aseq_mut, mu, ...
-                     ntot, nAA, V, r, I, d, dtot, ... 
-                     sigma,r0, gRefSeq, L, pRefSeq, pInfo, seq_nMut, proteinLocation, translateCodon);
+                [seq_loc, seq_mut, seq_nMut, ...
+                    aseq_loc, aseq_mut, aseq_nMut, ...
+                    aseq_alltime_unique_loc, aseq_alltime_unique_mut, aseq_alltime_unique_n, aseq_alltime_unique_nMut, ...
+                    nAA_alltime_unique, r_alltime_unique, ...
+                    ntot, nAA, V, r, I, d, dtot] = ...
+                replicate(i0, myStream, ...
+                    seq_loc, seq_mut, seq_nMut, ...
+                    aseq_loc, aseq_mut, aseq_nMut, ...
+                    aseq_alltime_unique_loc, aseq_alltime_unique_mut, aseq_alltime_unique_n, aseq_alltime_unique_nMut, ...
+                    nAA_alltime_unique, r_alltime_unique, ...
+                    mu, ntot, nAA, V, r, I, d, dtot, ...
+                    sigma, r0, ...
+                    gRefSeq, L, pRefSeq, pInfo, proteinLocation, translateCodon);
                  break
              end
              c = c + b*I(i);                                                % R3: clearence of a cell infected by strain i
@@ -138,8 +167,15 @@ for k = 1:N_mu
                  I(i) = I(i) - 1;
                  if V(i) + I(i) == 0    % if the strain has gone extinct, remove it
                      i0 = i;
-                     [seq_loc, seq_mut, aseq_loc, aseq_mut, V, I, r, d, dtot, ntot, nAA, seq_nMut] = ...
-                         remove(i0, seq_loc, seq_mut, aseq_loc, aseq_mut, V, I, r, d, dtot, ntot, nAA, seq_nMut);
+                    [seq_loc, seq_mut, seq_nMut, ...
+                        aseq_loc, aseq_mut, aseq_nMut, ...
+                        aseq_alltime_unique_n, ...
+                        V, I, r, d, dtot, ntot, nAA] = ...
+                    remove(i0, ...
+                        seq_loc, seq_mut, seq_nMut, ...
+                        aseq_loc, aseq_mut, aseq_nMut, ...
+                        aseq_alltime_unique_loc, aseq_alltime_unique_mut, aseq_alltime_unique_n, ...
+                        V, I, r, d, dtot, ntot, nAA);
                  end
                  break % for-loop
              end
@@ -148,14 +184,21 @@ for k = 1:N_mu
                  V(i) = V(i) - 1;
                  if V(i) + I(i) == 0    % if the strain has gone extinct, remove it
                      i0 = i;
-                     [seq_loc, seq_mut, aseq_loc, aseq_mut, V, I, r, d, dtot, ntot, nAA, seq_nMut] = ...
-                         remove(i0, seq_loc, seq_mut, aseq_loc, aseq_mut, V, I, r, d, dtot, ntot, nAA, seq_nMut);
+                    [seq_loc, seq_mut, seq_nMut, ...
+                        aseq_loc, aseq_mut, aseq_nMut, ...
+                        aseq_alltime_unique_n, ...
+                        V, I, r, d, dtot, ntot, nAA] = ...
+                    remove(i0, ...
+                        seq_loc, seq_mut, seq_nMut, ...
+                        aseq_loc, aseq_mut, aseq_nMut, ...
+                        aseq_alltime_unique_loc, aseq_alltime_unique_mut, aseq_alltime_unique_n, ...
+                        V, I, r, d, dtot, ntot, nAA);
                  end
                  break % for-loop
              end
          end % for-loop   
          % Collect statistics every 100 iterations:
-         if mod(s,100) == 0
+         if mod(s, nIter_record) == 0
              m = m + 1;
              % Increase size of arrays if necessary
              if m > length(meanFitness)
@@ -187,7 +230,7 @@ for k = 1:N_mu
              maxR(m) = max(r);
          end
          %display progression every 1000 iterations
-         if mod(s,1000) == 0
+         if mod(s, nIter_print) == 0
              disp(['t=',num2str(t),', ntot=',num2str(ntot)])
          end
     end % while-loop

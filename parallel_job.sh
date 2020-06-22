@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #PBS -N v9_test			 # job name
-#PBS -M C.L.M.vandenHeuvel@student.tudelft.nl  	 # specify e-mail address to send message to
+#PBS -M E.C.Nio@student.tudelft.nl  	 # specify e-mail address to send message to
 #PBS -m ae                               	 # mail when job is aborted (a) or terminates (e) 
 #PBS -l nodes=5:ppn=20                           # number of nodes & 
 
@@ -31,13 +31,13 @@ cd $OUTDIR
 module load matlab
 
 myfunction() {
-	matlab -nosplash -nodisplay -noFigureWindows -nodesktop -r "Gillespie_v9 $1"
+	matlab -nosplash -nodisplay -noFigureWindows -nodesktop -r "Gillespie_func $1"
 }
 export -f myfunction
 
 parallel myfunction ::: {1..100}
 
-# ececute code
+# execute code
 
 
 
