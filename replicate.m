@@ -1,5 +1,5 @@
 function [seq_loc, seq_mut, aseq_loc, aseq_mut, ntot, nAA, V, r, I, d, dtot, seq_nMut] = ...
-    replicate(i0, seq_loc, seq_mut, aseq_loc, aseq_mut, mu, ntot, nAA, V, r, I, d, dtot, sigma, r0, gRefSeq, L, pRefSeq, pInfo, seq_nMut, proteinLocation, translateCodon)
+    replicate(myStream, i0, seq_loc, seq_mut, aseq_loc, aseq_mut, mu, ntot, nAA, V, r, I, d, dtot, sigma, r0, gRefSeq, L, pRefSeq, pInfo, seq_nMut, proteinLocation, translateCodon)
 % This function lets a virus of strain i0 replicate. During the
 % replication, each nucleotide has a probability mu to mutate.
 % If a new strain is formed by mutation, the fitness of this new strain is
@@ -9,7 +9,7 @@ function [seq_loc, seq_mut, aseq_loc, aseq_mut, ntot, nAA, V, r, I, d, dtot, seq
     nt = ['A','T','G','C'];
     
     % Get mutation locations and number of mutations
-    mutations = rand(1,L);
+    mutations = rand(myStream,1,L);
     mutationBoolean = (mutations <= mu);
     loc = find(mutationBoolean); % find output is always sorted!
     nMut = length(loc);
@@ -22,7 +22,7 @@ function [seq_loc, seq_mut, aseq_loc, aseq_mut, ntot, nAA, V, r, I, d, dtot, seq
     
     % Mutate new sequence by combining old sequence mutations with new
     % sequence mutations.
-    iMutRandi = randi(3, [1, nMut]);
+    iMutRandi = randi(myStream,3, [1, nMut]);
     mut = blanks(nMut);
     % Go through mutation locations, if it was mutated in old mutations
     % then use the old mutation to get the 3 possible nucleotides to which

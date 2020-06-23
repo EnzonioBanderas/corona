@@ -1,6 +1,8 @@
-clear all
+% clear all
 % close all
 
+function Gillespie(x)
+myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));?
 %% Viral evolution with Gillespie algorithm
 
 % Source of model: 
@@ -33,23 +35,28 @@ U0 = 1e4;                   % initial number of not-infected cells
 ksi = 1.0;                 	% fitness decay
 sigma = 0.1;                % standard deviation of fitness
 T = inf;                    % maximal time (days)
-mu_array = linspace(1e-6, 1e-3,5);                 % mutation rate(s). Can be a single float (one mutation rate) or an array.
-N_mu = length(mu_array);                            % number of mutation rates to test
+mu = 1e-6;
+%mu_array = linspace(1e-6, 1e-3,5);                 % mutation rate(s). Can be a single float (one mutation rate) or an array.
+%N = length(mu_array);                              % number of mutation rates to test
 d0 = zeros(length(pNames),1);                       % distance of WTseq to fittest strain
 r0 = 2;                                             % Fitness of reference sequence 
+alpha_array = linspace(0,1,100);
+N = length(alpha_array);
 
 % Error threshold detectors
-Uarray = zeros(1, N_mu);                            % store the number of not-infected cells at the end of the infection
-statD = zeros(1, N_mu);                             % stationary value of number of mutations
-statR = zeros(1, N_mu);                             % stationary value of relative fitness
-statY = zeros(N_mu, La + 1);                    	% stationary value of particle number
+Uarray = zeros(1, N);                            % store the number of not-infected cells at the end of the infection
+statD = zeros(1, N);                             % stationary value of number of mutations
+statR = zeros(1, N);                             % stationary value of relative fitness
+statY = zeros(N, La + 1);                    	 % stationary value of particle number
 titer = struct();
 
 S = 1e3;                                            % initial size of arrays
 
 % Start for-loop over mutation rates ######################################
-for k = 1:N_mu
-    mu = mu_array(k);                                                       % mutation rate
+for k = 1:N
+    r0 = 2
+    %mu = mu_array(k);                                                       % mutation rate
+    alpha = alpha_array(k)
     % initialize
     disp(mu)
     U = U0;                                                                 % number of infected cells.
@@ -92,15 +99,20 @@ for k = 1:N_mu
          % Stop if there are no more viral particles left:
          if sum(I+V) == 0                                                  	
            	break
-         end            
+         end
+         if t >= t_anti && antiviral == false
+             r0 = alpha*r0;
+             r  = alpha*r;
+             antiviral = true;
+         end    
          s = s + 1;                                                         
          % calculate total reaction rate
          Rtot = (a*U + b)*sum(V) + b*sum(I) + sum(r.*I);                                          
          % take time step
-         dt = (1/Rtot) * log(1/rand);                                       % time step is exponentially distributed and depends on total reaction rate
+         dt = (1/Rtot) * log(1/rand(myStream));                                       % time step is exponentially distributed and depends on total reaction rate
          t = t + dt;
          % choose a random number between 0 and Rtot
-         rnd = Rtot * rand;
+         rnd = Rtot * rand(myStream);
          c = 0;
          % Increase the size of arrays if it is necessary
          if find(V+I, 1,'last') + 10 > length(V)
@@ -128,7 +140,7 @@ for k = 1:N_mu
              if c > rnd
                  i0 = i;
                  [seq_loc, seq_mut, aseq_loc, aseq_mut, ntot, nAA, V, r, I, d, dtot, seq_nMut] = ...
-                     replicate(i0, seq_loc, seq_mut, aseq_loc, aseq_mut, mu, ...
+                     replicate(myStream, i0, seq_loc, seq_mut, aseq_loc, aseq_mut, mu, ...
                      ntot, nAA, V, r, I, d, dtot, ... 
                      sigma,r0, gRefSeq, L, pRefSeq, pInfo, seq_nMut, proteinLocation, translateCodon);
                  break
@@ -208,12 +220,11 @@ for k = 1:N_mu
     statR(k) = sum(meanFitness(2:end) .* delta_t) / time(end); 
     % Collect error threshold detectors
     Uarray(k) = U;
-    titer(k).a = a;
+    titer(k).alpha = alpha;
     titer(k).Mu = mu;
-   	titer(k).Time = data(:,1);
-    titer(k).ntot = V;
-    titer(k).I = I;
     titer(k).data = data;
-    titer(k).Load = data(:,5) + data(:,6);
 end % for-loop
-save('Gillespie.mat','-v7.3');
+fname = ['Gillespie', num2str(x), '.mat']
+save(fname, 'titer','mu','statY','statD','statR','maxD','maxR',...?        
+    '-v7.3');?
+end 
