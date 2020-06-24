@@ -12,7 +12,7 @@ for k = 1:nIter
     data = titer(k).data;
     
     timeInt = round(data(:,1)/timeStep);
-    time = unique(timeInt)*dt;
+    time = unique(timeInt)*timeStep;
     timeGroups = findgroups(timeInt);
     
     % Fill in data_mean values
@@ -32,7 +32,7 @@ data = vertcat(titer(:).data_mean); % concatenate meaned data
 
 % Repeat process but also calculate SEM
 timeInt = round(data(:,1)/timeStep);
-time = unique(timeInt)*dt;
+time = unique(timeInt)*timeStep;
 timeGroups = findgroups(timeInt);
 
 % Fill in data_mean, data_std, data_length and data_sem values

@@ -1,13 +1,9 @@
 function [seq_loc, seq_mut, seq_nMut, ...
     aseq_loc, aseq_mut, aseq_nMut, ...
-    aseq_alltime_unique_loc, aseq_alltime_unique_mut, aseq_alltime_unique_n, aseq_alltime_unique_nMut, ...
-    nAA_alltime_unique, r_alltime_unique, ...
     ntot, nAA, V, r, I, d, dtot] = ...
 replicate(i0, myStream, ...
     seq_loc, seq_mut, seq_nMut, ...
     aseq_loc, aseq_mut, aseq_nMut, ...
-    aseq_alltime_unique_loc, aseq_alltime_unique_mut, aseq_alltime_unique_n, aseq_alltime_unique_nMut, ...
-    nAA_alltime_unique, r_alltime_unique, ...
     mu, ntot, nAA, V, r, I, d, dtot, ...
     sigma, r0, ...
     gRefSeq, L, pRefSeq, pInfo, proteinLocation, translateCodon)
@@ -147,42 +143,30 @@ replicate(i0, myStream, ...
     aseq_mut{newLoc} = newAAsequence_mut;
     nMutAA = length(newAAsequence_loc);
     aseq_nMut(newLoc) = nMutAA;
+    existing = find((V+I)~=0);
     V(newLoc) = 1;
     I(newLoc) = 0;
     di = distance(newAAsequence_loc, proteinLocation);
     d(:,newLoc) = di;
     dtot(newLoc) = sum(di);
     
-    % Keep track of all unique AAs generated over all time, if encountering
-    % a new amino acid as opposed to all previously generated amino acids
-    % generate a new replication rate. If encountering an already
-    % generated AA, assign an previously computed replication rate.
-    % If new AA was generated increase present and alltime AA counts.
-    if nMutAA==0
-        r(newLoc) = r0;
-    else
-        for iAA = 1:nAA_alltime_unique
-            if nMutAA==aseq_alltime_unique_nMut(iAA)
-                if all(newAAsequence_loc==aseq_alltime_unique_loc{iAA})
-                    if all(newAAsequence_mut==aseq_alltime_unique_mut{iAA})
-                        r(newLoc) = r_alltime_unique(iAA);
-                        if aseq_alltime_unique_n(iAA)==0
-                            nAA = nAA + 1;
-                        end
-                        aseq_alltime_unique_n(iAA) = aseq_alltime_unique_n(iAA) + 1;
-                        return
-                    end   
+    % Loop through all existing strains and if the new AA sequence is the
+    % same as an already existing strain, assign an existing replication
+    % rate to the new strain and do not increase nAA and exit the function. 
+    % If the new sequence is not the same as any of the existing strains, 
+    % the loop is exited, a new replication rate is generated and nAA is increased.
+    for iAA = existing
+        if nMutAA==aseq_nMut(iAA)
+            if all(newAAsequence_loc==aseq_loc{iAA})
+                if all(newAAsequence_mut==aseq_mut{iAA})
+                    r(newLoc) = r(iAA);
+                    return
                 end
             end
         end
     end
-    nAA_alltime_unique = nAA_alltime_unique + 1; % number of unique AAs generated over all time
+    r(newLoc) = replicationRate(di, r0, sigma, pInfo);
     nAA = nAA + 1; % number of amino acids currently present
-    aseq_alltime_unique_loc(nAA_alltime_unique) = aseq_loc(newLoc);
-    aseq_alltime_unique_mut(nAA_alltime_unique) = aseq_mut(newLoc);
-    aseq_alltime_unique_nMut(nAA_alltime_unique) = nMutAA;
-    aseq_alltime_unique_n(nAA_alltime_unique) = 1;
-    r_alltime_unique(nAA_alltime_unique) = replicationRate(di, r0, sigma, pInfo);
-    r(newLoc) = r_alltime_unique(nAA_alltime_unique);
+
     
 end

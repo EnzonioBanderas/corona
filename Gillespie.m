@@ -35,7 +35,7 @@ U0 = 1e4;                   % initial number of not-infected cells
 ksi = 1.0;                 	% fitness decay
 sigma = 0.1;                % standard deviation of fitness
 T = inf;                    % maximal time (days)
-mu_array = linspace(1e-6, 1e-3,5);                 % mutation rate(s). Can be a single float (one mutation rate) or an array.
+% mu_array = linspace(1e-6, 1e-3,5);                 % mutation rate(s). Can be a single float (one mutation rate) or an array.
 mu_array = ones(1,1)*1e-4;
 nIter_record = 100;                                 % record every 100 iterations
 nIter_print = 1000;                                 % print every 1000 iterations
@@ -61,14 +61,6 @@ for k = 1:N_mu
     seq_loc = cell(1,S); aseq_loc = cell(1,S);                                % number of infected cells.
     seq_mut = cell(1,S); aseq_mut = cell(1,S);
     seq_nMut = zeros(1,S); aseq_nMut = zeros(1, S);
-    nAA_alltime_unique = 1;
-    aseq_alltime_unique_n = zeros(1,S);
-    aseq_alltime_unique_n(1) = 1;
-    aseq_alltime_unique_loc = cell(1,S);
-    aseq_alltime_unique_mut = cell(1,S);
-    aseq_alltime_unique_nMut = zeros(1, S);
-    r_alltime_unique = zeros(1,S);
-    r_alltime_unique(1) = r0;      
 %     seq{1} = cell(1,2); aseq{1} = cell(1,2);
 %     seq{1} = [];                                                     	% cell array to keep track of nt sequences
 %     aseq{1} = [];                                                      % cell array to keep track of aa sequences   
@@ -126,13 +118,6 @@ for k = 1:N_mu
              seq_mut = [seq_mut, cell(1,S)]; aseq_mut = [aseq_mut, cell(1,S)];
              seq_nMut = [seq_nMut, zeros(1,S)]; aseq_nMut = [aseq_nMut, zeros(1,S)];
          end
-         if nAA_alltime_unique + 10 > length(aseq_alltime_unique_n)
-            aseq_alltime_unique_n = [aseq_alltime_unique_n, zeros(1,S)];
-            aseq_alltime_unique_loc = [aseq_alltime_unique_loc, cell(1,S)];
-            aseq_alltime_unique_mut = [aseq_alltime_unique_mut, cell(1,S)];
-            aseq_alltime_unique_nMut = [aseq_alltime_unique_nMut, zeros(1,S)];
-            r_alltime_unique = [r_alltime_unique, zeros(1,S)];
-         end
          % loop over viral strains
          for i = 1:find(V+I, 1,'last')    
              % choose which of the 4 reactions will occur 
@@ -149,14 +134,10 @@ for k = 1:N_mu
                  i0 = i;
                 [seq_loc, seq_mut, seq_nMut, ...
                     aseq_loc, aseq_mut, aseq_nMut, ...
-                    aseq_alltime_unique_loc, aseq_alltime_unique_mut, aseq_alltime_unique_n, aseq_alltime_unique_nMut, ...
-                    nAA_alltime_unique, r_alltime_unique, ...
                     ntot, nAA, V, r, I, d, dtot] = ...
                 replicate(i0, myStream, ...
                     seq_loc, seq_mut, seq_nMut, ...
                     aseq_loc, aseq_mut, aseq_nMut, ...
-                    aseq_alltime_unique_loc, aseq_alltime_unique_mut, aseq_alltime_unique_n, aseq_alltime_unique_nMut, ...
-                    nAA_alltime_unique, r_alltime_unique, ...
                     mu, ntot, nAA, V, r, I, d, dtot, ...
                     sigma, r0, ...
                     gRefSeq, L, pRefSeq, pInfo, proteinLocation, translateCodon);
@@ -169,12 +150,10 @@ for k = 1:N_mu
                      i0 = i;
                     [seq_loc, seq_mut, seq_nMut, ...
                         aseq_loc, aseq_mut, aseq_nMut, ...
-                        aseq_alltime_unique_n, ...
                         V, I, r, d, dtot, ntot, nAA] = ...
                     remove(i0, ...
                         seq_loc, seq_mut, seq_nMut, ...
                         aseq_loc, aseq_mut, aseq_nMut, ...
-                        aseq_alltime_unique_loc, aseq_alltime_unique_mut, aseq_alltime_unique_n, ...
                         V, I, r, d, dtot, ntot, nAA);
                  end
                  break % for-loop
@@ -186,17 +165,16 @@ for k = 1:N_mu
                      i0 = i;
                     [seq_loc, seq_mut, seq_nMut, ...
                         aseq_loc, aseq_mut, aseq_nMut, ...
-                        aseq_alltime_unique_n, ...
                         V, I, r, d, dtot, ntot, nAA] = ...
                     remove(i0, ...
                         seq_loc, seq_mut, seq_nMut, ...
                         aseq_loc, aseq_mut, aseq_nMut, ...
-                        aseq_alltime_unique_loc, aseq_alltime_unique_mut, aseq_alltime_unique_n, ...
                         V, I, r, d, dtot, ntot, nAA);
                  end
                  break % for-loop
              end
          end % for-loop   
+         
          % Collect statistics every 100 iterations:
          if mod(s, nIter_record) == 0
              m = m + 1;
@@ -253,10 +231,17 @@ for k = 1:N_mu
     Uarray(k) = U;
     titer(k).a = a;
     titer(k).Mu = mu;
-   	titer(k).Time = data(:,1);
-    titer(k).ntot = V;
-    titer(k).I = I;
+    titer(k).t = t;
+    titer(k).ntot = ntot;
+    titer(k).nAA = nAA;
+    titer(k).U_sum = sum(U);
+    titer(k).I_sum = sum(I);
+    titer(k).V_sum = sum(V);
     titer(k).data = data;
-    titer(k).Load = data(:,5) + data(:,6);
+    titer(k).statY = statY(k);
+    titer(k).statD = statD(k);
+    titer(k).statR = statR(k);
+    titer(k).maxD = maxD;
+    titer(k).maxR = maxR;
 end % for-loop
 save('Gillespie.mat','-v7.3');
