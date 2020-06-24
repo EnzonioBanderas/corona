@@ -249,6 +249,7 @@ function Gillespie_func(x)
         titer(k).statY = statY(k);
         titer(k).statD = statD(k);
         titer(k).statR = statR(k);
+        titer(k).Uarray = Uarray(k);
         titer(k).maxD = maxD;
         titer(k).maxR = maxR;
     end % for-loop
