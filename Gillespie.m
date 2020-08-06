@@ -2,6 +2,7 @@
 % close all
 
 %function Gillespie(x)
+x = '1';
 myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));
 %% Viral evolution with Gillespie algorithm
 
@@ -18,13 +19,8 @@ myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));
 %% Get protein and genome reference sequences #############################
 [gRefSeq, pRefSeq, pNames, proteinLocation, genomeLocation] = getRefSeq();
 translateCodon = geneticcode();
-[beta0, beta1] = logisticRegressionProteins();
-% Store betas of logistic regression in pInfo
-for i = 1:length(pNames)
-    protein = pNames{i};
-    pInfo.(protein).betas(1) = beta0(i);
-    pInfo.(protein).betas(2) = beta1(i);
-end
+[beta, sigma] = logisticRegressionProteins();
+
 %% Initialize #############################################################
 La = length(pRefSeq);                   
 L = length(gRefSeq);        % length of genome sequence
@@ -33,14 +29,14 @@ b = 0.4;                    % death/clearance rate of infected cells per day.
 V0 = 400;                   % initial number of viruses
 U0 = 1e4;                   % initial number of uninfected cells
 ksi = 1.0;                 	% fitness decay
-sigma = 0.1;                % standard deviation of fitness
 T = inf;                    % maximal time (days)
+t_anti = inf;
 mu = 1e-6;
 %mu_array = linspace(1e-6, 1e-3,5);                 % mutation rate(s). Can be a single float (one mutation rate) or an array.
 %N = length(mu_array);                              % number of mutation rates to test
 d0 = zeros(length(pNames),1);                       % distance of WTseq to fittest strain
 r0 = 2;                                             % Fitness of reference sequence 
-alpha_array = linspace(0,1,100);
+alpha_array = 1;
 N = length(alpha_array);
 
 % Error threshold detectors
@@ -63,9 +59,6 @@ for k = 1:N
     seq_loc = cell(1,S); aseq_loc = cell(1,S);                                % number of infected cells.
     seq_mut = cell(1,S); aseq_mut = cell(1,S);
     seq_nMut = zeros(1,S);
-%     seq{1} = cell(1,2); aseq{1} = cell(1,2);
-%     seq{1} = [];                                                     	% cell array to keep track of nt sequences
-%     aseq{1} = [];                                                      % cell array to keep track of aa sequences   
     % counters
     ntot = 1;                                                               % initial number of distinct viral genotypes
     nAA = 1;                                                                % initial number of distinct viral phenotypes
