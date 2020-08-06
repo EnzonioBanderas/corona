@@ -1,5 +1,5 @@
 function [seq_loc, seq_mut, aseq_loc, aseq_mut, ntot, nAA, V, r, I, d, dtot, seq_nMut] = ...
-    replicate(myStream, i0, seq_loc, seq_mut, aseq_loc, aseq_mut, mu, ntot, nAA, V, r, I, d, dtot, sigma, r0, gRefSeq, L, pRefSeq, pInfo, seq_nMut, proteinLocation, translateCodon)
+    replicate(myStream, i0, seq_loc, seq_mut, aseq_loc, aseq_mut, mu, ntot, nAA, V, r, I, d, dtot, sigma, r0, gRefSeq, L, pRefSeq, beta, seq_nMut, proteinLocation, translateCodon)
 % This function lets a virus of strain i0 replicate. During the
 % replication, each nucleotide has a probability mu to mutate.
 % If a new strain is formed by mutation, the fitness of this new strain is

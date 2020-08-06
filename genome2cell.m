@@ -1,29 +1,6 @@
 function genomeRefCell = genome2cell(genomeData)
-% nsp1 = 266:805
-% nsp2 = 806:2719
-% nsp3 = 2720:8554
-% nsp4 = 8555:10054
-% nsp5 = 10055:10972
-% nsp6 = 10973:11842
-% nsp7 = 11843:12091
-% nsp8 = 12092:12685
-% nsp9 = 12686:13024
-% nsp10 = 13025:13441
-% nsp11 = ????
-% nsp12 = 13442..13468,13468..16236 (RdRp)
-% nsp13 = 16237..18039
-% nsp14 = 18040..19620
-% nsp15 = 19621..20658
-% nsp16 = 20659..21552
-% Spike = 21563..25383
-% NS3 = 25393..26219
-% E = 26245..26471
-% M = 26523..27190
-% NS6 = 27202..27386
-% NS7a = 27394..27758
-% NS7b = 27756..27886
-% NS8 = 27894..28258
-% N = 28274..29532
+% This function takes as input the entire SARS-CoV2 reference genome. It
+% stores the sequences of 24 genes encoding for the 24 proteins in a cell array.
     genomeRefCell{1} = genomeData(266:805);
     genomeRefCell{2} = genomeData(806:2719);
     genomeRefCell{3} = genomeData(2720:8554);

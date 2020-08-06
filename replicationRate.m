@@ -1,4 +1,4 @@
-function r = replicationRate(d, r0, sigma, pInfo)
+function r = replicationRate(d, r0, sigma, beta)
 % This function determines the fitness of a strain with a distance d from
 % the reference sequence, which has fitness r0.
 % The fitness is normal distributed with mean mu (predicted by logistic 
@@ -11,8 +11,8 @@ function r = replicationRate(d, r0, sigma, pInfo)
             replRate = 1;
         else
             protein = pNames{i};
-            b = pInfo.(protein).betas;
-            mu = predict(b', d(i));
+            b = beta(:, i);
+            mu = predict(b, d(i));
             replRate = max(sigma*randn + mu, 0);
         end
         rArray(i) = replRate;
