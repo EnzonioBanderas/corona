@@ -1,8 +1,8 @@
-% clear all
-% close all
-
-function Gillespie(x)
-myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));?
+clear all
+close all
+x = '1';
+%function Gillespie(x)
+myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));
 %% Viral evolution with Gillespie algorithm
 
 % Source of model: 
@@ -16,15 +16,10 @@ myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));?
 % Death : In -> 0             (R3) rate = b
 % Clearence: Vn -> 0          (R4) rate = b
 %% Get protein and genome reference sequences #############################
-[gRefSeq, pRefSeq, pNames, pInfo, proteinLocation, genomeLocation] = getRefSeq();
+[gRefSeq, pRefSeq, pNames, proteinLocation, genomeLocation] = getRefSeq_new();
 translateCodon = geneticcode();
-[beta0, beta1] = logisticRegressionProteins();
-% Store betas of logistic regression in pInfo
-for i = 1:length(pNames)
-    protein = pNames{i};
-    pInfo.(protein).betas(1) = beta0(i);
-    pInfo.(protein).betas(2) = beta1(i);
-end
+[beta, sigma] = logisticRegressionProteins_new();
+
 %% Initialize #############################################################
 La = length(pRefSeq);                   
 L = length(gRefSeq);        % length of genome sequence
@@ -142,7 +137,7 @@ for k = 1:N
                  [seq_loc, seq_mut, aseq_loc, aseq_mut, ntot, nAA, V, r, I, d, dtot, seq_nMut] = ...
                      replicate(myStream, i0, seq_loc, seq_mut, aseq_loc, aseq_mut, mu, ...
                      ntot, nAA, V, r, I, d, dtot, ... 
-                     sigma,r0, gRefSeq, L, pRefSeq, pInfo, seq_nMut, proteinLocation, translateCodon);
+                     sigma,r0, gRefSeq, L, pRefSeq, beta, seq_nMut, proteinLocation, translateCodon);
                  break
              end
              c = c + b*I(i);                                                % R3: clearence of a cell infected by strain i
@@ -224,7 +219,6 @@ for k = 1:N
     titer(k).Mu = mu;
     titer(k).data = data;
 end % for-loop
-fname = ['Gillespie', num2str(x), '.mat']
-save(fname, 'titer','mu','statY','statD','statR','maxD','maxR',...?        
-    '-v7.3');?
-end 
+fname = ['Gillespie', num2str(x), '.mat'];
+save(fname, 'titer','mu','statY','statD','statR','maxD','maxR',...       
+    '-v7.3');
