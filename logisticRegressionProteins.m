@@ -1,4 +1,4 @@
-function [beta, sigma] = logisticRegressionProteins_new()
+function [beta, sigma] = logisticRegressionProteins()
 % Function performs a logistic regression on the number of mutations for 
 % protein. The mutation numbers are stored in 'mismatchBoolean'.
 % beta0 and beta1 are arrays with the values of beta1 and beta2 for all
@@ -23,6 +23,7 @@ function [beta, sigma] = logisticRegressionProteins_new()
         % Do logistic regression
         b = logisticRegression(X, y);
         beta(:, i) = b;
+        
         % Find standard error
         prediction = predict(b, X);
         sigma(i) = sqrt (sum((prediction - y) .^2) / (N - 2) );

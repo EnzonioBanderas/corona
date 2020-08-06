@@ -2,7 +2,7 @@
 % close all
 
 function Gillespie(x)
-myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));?
+myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));
 %% Viral evolution with Gillespie algorithm
 
 % Source of model: 
@@ -29,9 +29,9 @@ end
 La = length(pRefSeq);                   
 L = length(gRefSeq);        % length of genome sequence
 a = 2e-5;                   % infection rate per day.
-b = 0.4;                    % death/clearence rate of infected cells per day.
+b = 0.4;                    % death/clearance rate of infected cells per day.
 V0 = 400;                   % initial number of viruses
-U0 = 1e4;                   % initial number of not-infected cells
+U0 = 1e4;                   % initial number of uninfected cells
 ksi = 1.0;                 	% fitness decay
 sigma = 0.1;                % standard deviation of fitness
 T = inf;                    % maximal time (days)
@@ -142,7 +142,7 @@ for k = 1:N
                  [seq_loc, seq_mut, aseq_loc, aseq_mut, ntot, nAA, V, r, I, d, dtot, seq_nMut] = ...
                      replicate(myStream, i0, seq_loc, seq_mut, aseq_loc, aseq_mut, mu, ...
                      ntot, nAA, V, r, I, d, dtot, ... 
-                     sigma,r0, gRefSeq, L, pRefSeq, pInfo, seq_nMut, proteinLocation, translateCodon);
+                     sigma,r0, gRefSeq, L, pRefSeq, beta, seq_nMut, proteinLocation, translateCodon);
                  break
              end
              c = c + b*I(i);                                                % R3: clearence of a cell infected by strain i

@@ -1,4 +1,4 @@
-function [gRefSeq, pRefSeq, pNames, proteinLocation, genomeLocation] = getRefSeq_new()
+function [gRefSeq, pRefSeq, pNames, proteinLocation, genomeLocation] = getRefSeq()
 
     % Load data
     pNames = ...
@@ -12,15 +12,16 @@ function [gRefSeq, pRefSeq, pNames, proteinLocation, genomeLocation] = getRefSeq
     gRefCell = genome2cell(gData);                                          % cell array with all genome sequences    
     % translate genome into protein sequence:
     pRefCell = nt2aa(gRefCell); 
+
     % combine the cell arrays into two character arrays
     gRefSeq = horzcat(gRefCell{:});                                       	% char array with all genome sequences 
     pRefSeq = horzcat(pRefCell{:});                                         % char array with all protein sequences
     % Collect starting and ending locations of each protein
-    proteinLocation = zeros(length(pNames), 2);
+    proteinLocation = zeros(N, 2);
     genomeLocation = proteinLocation;
     startP = 1;                                                             % start of protein in protein sequence
     startG = 1;                                                             % start of protein in genome sequence
-    for i = 1:length(pNames)
+    for i = 1:N
         L = length(pRefCell{i});                                            % length of protein
         proteinLocation(i, :) = [startP, min(startP + L -1, length(pRefSeq))];  % start and end of protein in amino acid sequence
         genomeLocation(i, :) = [startG, min(startG + 3*L, length(gRefSeq))];    % start and end of protein in nuclotide sequence

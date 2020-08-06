@@ -147,7 +147,7 @@ function [seq_loc, seq_mut, aseq_loc, aseq_mut, ntot, nAA, V, r, I, d, dtot, seq
             end   
         end
     end
-    r(newLoc) = replicationRate(di, r_i0, sigma, pInfo);
+    r(newLoc) = replicationRate(di, r_i0, sigma, beta);
     
 %         sameSeq = find(strcmp(aseq, newAAsequence),1);
 %         if isempty(sameSeq)

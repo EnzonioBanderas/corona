@@ -10,10 +10,9 @@ function r = replicationRate(d, r0, sigma, beta)
         if d(i) == 0
             replRate = 1;
         else
-            protein = pNames{i};
             b = beta(:, i);
             mu = predict(b, d(i));
-            replRate = max(sigma*randn + mu, 0);
+            replRate = max(sigma(i)*randn + mu, 0);
         end
         rArray(i) = replRate;
     end
