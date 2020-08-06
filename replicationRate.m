@@ -3,10 +3,9 @@ function r = replicationRate(d, r0, sigma, beta)
 % the reference sequence, which has fitness r0.
 % The fitness is normal distributed with mean mu (predicted by logistic 
 % regression) and standard deviation sigma.
-
-    pNames = fields(pInfo);
-    rArray = zeros(length(pNames),1);
-    for i=1:length(pNames)
+    N = length(sigma);
+    rArray = zeros(N,1);
+    for i=1:N
         if d(i) == 0
             replRate = 1;
         else

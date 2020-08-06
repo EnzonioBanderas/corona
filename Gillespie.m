@@ -1,7 +1,7 @@
 % clear all
 % close all
 
-function Gillespie(x)
+%function Gillespie(x)
 myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));
 %% Viral evolution with Gillespie algorithm
 
@@ -16,7 +16,7 @@ myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));
 % Death : In -> 0             (R3) rate = b
 % Clearence: Vn -> 0          (R4) rate = b
 %% Get protein and genome reference sequences #############################
-[gRefSeq, pRefSeq, pNames, pInfo, proteinLocation, genomeLocation] = getRefSeq();
+[gRefSeq, pRefSeq, pNames, proteinLocation, genomeLocation] = getRefSeq();
 translateCodon = geneticcode();
 [beta0, beta1] = logisticRegressionProteins();
 % Store betas of logistic regression in pInfo
@@ -225,6 +225,6 @@ for k = 1:N
     titer(k).data = data;
 end % for-loop
 fname = ['Gillespie', num2str(x), '.mat']
-save(fname, 'titer','mu','statY','statD','statR','maxD','maxR',...?        
-    '-v7.3');?
-end 
+save(fname, 'titer','mu','statY','statD','statR','maxD','maxR',...      
+    '-v7.3');
+%end 
