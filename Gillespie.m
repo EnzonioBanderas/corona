@@ -16,7 +16,7 @@ myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));
 % Death : In -> 0             (R3) rate = b
 % Clearence: Vn -> 0          (R4) rate = b
 %% Get protein and genome reference sequences #############################
-[gRefSeq, pRefSeq, pNames, proteinLocation, genomeLocation] = getRefSeq_new();
+[gRefSeq, pRefSeq, pNames, proteinLocation, genomeLocation] = getRefSeq();
 translateCodon = geneticcode();
 [beta, sigma] = logisticRegressionProteins_new();
 
