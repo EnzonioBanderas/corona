@@ -22,25 +22,26 @@ myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));
 translateCodon = geneticcode();
 [beta, sigma] = logisticRegressionProteins();
 
-%% Initialize #############################################################                 
-L = length(gRefSeq);        % length of genome sequence
+%% Initialize ############################################################# 
 a = 2e-5;                   % infection rate per day.
 b = 0.4;                    % death/clearance rate of infected cells per day.
 V0 = 400;                   % initial number of viruses
-U0 = 1e4;                   % initial number of uninfected cells
+U0 = 1e5;                   % initial number of uninfected cells
 ksi = 1.0;                 	% fitness decay
 T = inf;                    % maximal time (days)
 t_anti = inf;
 mu = 1e-6;
+mu_array = mu;
 %mu_array = linspace(1e-6, 1e-3,5);                 % mutation rate(s). Can be a single float (one mutation rate) or an array.
 r0 = 2;                                             % Fitness of reference sequence 
 alpha_array = 1;
+antiviral = false;
 
 S = 1e3;                    % initial size of arrays
 nIter_record = 100;         % record every 100 iterations
 nIter_print = 1000;         % print every 1000 iterations
-kill = 1;                      % killing of infected cells by immune cells
-stim = .001;                   % stimulation of immune cells by infected cells
+kill = 0;                      % killing of infected cells by immune cells
+stim = 0;                   % stimulation of immune cells by infected cells
 
 % Follows
 N_mu = length(mu_array);                            % number of mutation rates to test
@@ -94,7 +95,7 @@ for k = 1:N_mu
     d = zeros(length(pNames), S);                                           % distance to reference per strain per protein
     dtot = zeros(1, S);                                                     % total distance to reference (sum of all proteins) per strain
     % arrays to collect stats
-    Y = zeros(S, L + 1);                                                   % matrix for number of viruses with distance d from WT seq.
+    Y = zeros(S, La + 1);                                                   % matrix for number of viruses with distance d from WT seq.
    	Y(1,1) = V(1);      
     
     data = zeros(S, 6);                                                     % matrix to collect time, # distinct genotypes, # distinct phenotypes, # not-infected cells, # infected cells, # viruses.
@@ -120,7 +121,7 @@ for k = 1:N_mu
          s = s + 1;                                                         
          % calculate total reaction rate
          Rtot = (a*U + b)*sum(V) + b*sum(I) + sum(r.*I) + ...
-                stim*sum(I) + b*sum(Tcells) + sum(k*Tcells_perStrain.*I);  
+                stim*sum(I) + b*sum(Tcells) + sum(k*Tcells_perStrain.*I); 
          % take time step
          dt = (1/Rtot) * log(1/rand(myStream));                                       % time step is exponentially distributed and depends on total reaction rate
          t = t + dt;
@@ -160,11 +161,12 @@ for k = 1:N_mu
                  I(i) = I(i) + 1;                                               
                  V(i) = V(i) - 1;
                  U = U - 1;      
-                 reaction_happened = true;                                              
+                 reaction_happened = true;      
                  break
              end
              c = c + r(i)*I(i);                                             % R2: replication of strain i
              if c > rnd
+                 i0 = i;
                 [seq_loc, seq_mut, seq_nMut, ...
                     aseq_loc, aseq_mut, aseq_nMut, ...
                     ntot, nAA, V, r, I, d, dtot, ...
@@ -184,6 +186,7 @@ for k = 1:N_mu
              c = c + b*I(i);                                                % R3: clearence of a cell infected by strain i
              if c > rnd
                  I(i) = I(i) - 1;
+%                  disp(['V=',num2str(V(i)),', I=',num2str(I(i))])
                  if V(i) + I(i) == 0    % if the strain has gone extinct, remove it
                      i0 = i;
                     [seq_loc, seq_mut, seq_nMut, ...
@@ -206,6 +209,7 @@ for k = 1:N_mu
              c = c + b*V(i);                                                % R4: clearence of a free viral particle of strain i
              if c > rnd
                  V(i) = V(i) - 1;
+%                  disp(['V=',num2str(V(i)),', I=',num2str(I(i))])
                  if V(i) + I(i) == 0    % if the strain has gone extinct, remove it
                      i0 = i;
                     [seq_loc, seq_mut, seq_nMut, ...
@@ -238,7 +242,6 @@ for k = 1:N_mu
              end 
              c = c + kill*sum(I(Epitope2Strain_index))*Tcells(iEpitope);                                           % Killing: Cytotoxic T cells kill infected cells
              if c > rnd
-%                  I(Epitope2Strain_index)
                  i0 = Epitope2Strain_index(randi(myStream, length(Epitope2Strain_index)));
                  I(i0) = I(i0) - 1;
                  if V(i0) + I(i0) == 0    % if the strain has gone extinct, remove it
@@ -274,7 +277,7 @@ for k = 1:N_mu
              m = m + 1;
              % Increase size of arrays if necessary
              if m > length(meanFitness)
-                 Y = [Y; zeros(S, L + 1)];
+                 Y = [Y; zeros(S, La + 1)];
                  data = [data; zeros(S, 6)];
                  meanDistance = [meanDistance, zeros(1,S)];
                  meanFitness = [meanFitness, zeros(1,S)];
@@ -338,7 +341,10 @@ for k = 1:N_mu
     titer(k).maxD = maxD;
     titer(k).maxR = maxR;
 end % for-loop
-fname = ['Gillespie', num2str(x), '.mat']
+% fname = ['Gillespie', num2str(x), '.mat']
+% save(fname, 'titer','mu','statY','statD','statR','maxD','maxR',...      
+%     '-v7.3');
+fname = ['Output/Gillespie.mat']
 save(fname, 'titer','mu','statY','statD','statR','maxD','maxR',...      
     '-v7.3');
 %end 
