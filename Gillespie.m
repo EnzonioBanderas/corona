@@ -38,9 +38,9 @@ alpha_array = 1;
 antiviral = false;
 
 S = 1e3;                    % initial size of arrays
-nIter_record = 100;         % record every 100 iterations
+t_collect = 1/24;           % record every hour
 nIter_print = 1000;         % print every 1000 iterations
-kill = 0;                      % killing of infected cells by immune cells
+kill = 0;                   % killing of infected cells by immune cells
 stim = 0;                   % stimulation of immune cells by infected cells
 
 % Follows
@@ -61,13 +61,12 @@ titer = struct();
 
 % Start for-loop over mutation rates ######################################
 for k = 1:N_mu
-    r0 = 2
-    %mu = mu_array(k);                                                       % mutation rate
-    alpha = alpha_array(k)
+    %mu = mu_array(k);                                                     % mutation rate
+    alpha = alpha_array(k);
     % initialize
     disp(mu)
-    U = U0;                                                                 % number of infected cells.
-    seq_loc = cell(1,S); aseq_loc = cell(1,S);                                % number of infected cells.
+    U = U0;                                                                % number of infected cells.
+    seq_loc = cell(1,S); aseq_loc = cell(1,S);                             % number of infected cells.
     seq_mut = cell(1,S); aseq_mut = cell(1,S);
     seq_nMut = zeros(1,S); aseq_nMut = zeros(1,S);                         % cell array to keep track of aa sequences   
     
@@ -106,13 +105,10 @@ for k = 1:N_mu
     maxD = zeros(1,S);
     maxR = zeros(1,S);
     maxR(1) = r0;
+    evenness = zeros(1,S);
     
     % Start while loop ####################################################
     while t < T
-         % Stop if there are no more viral particles left:
-         if sum(I+V) == 0                                                  	
-           	break
-         end
          if t >= t_anti && antiviral == false
              r0 = alpha*r0;
              r  = alpha*r;
@@ -186,7 +182,6 @@ for k = 1:N_mu
              c = c + b*I(i);                                                % R3: clearence of a cell infected by strain i
              if c > rnd
                  I(i) = I(i) - 1;
-%                  disp(['V=',num2str(V(i)),', I=',num2str(I(i))])
                  if V(i) + I(i) == 0    % if the strain has gone extinct, remove it
                      i0 = i;
                     [seq_loc, seq_mut, seq_nMut, ...
@@ -209,7 +204,6 @@ for k = 1:N_mu
              c = c + b*V(i);                                                % R4: clearence of a free viral particle of strain i
              if c > rnd
                  V(i) = V(i) - 1;
-%                  disp(['V=',num2str(V(i)),', I=',num2str(I(i))])
                  if V(i) + I(i) == 0    % if the strain has gone extinct, remove it
                      i0 = i;
                     [seq_loc, seq_mut, seq_nMut, ...
@@ -272,8 +266,14 @@ for k = 1:N_mu
          end
          end
          
+         % Stop if there are no more viral particles left:
+         if sum(I+V) == 0                                                  	
+           	break
+         end
+         
          % Collect statistics every 100 iterations:
-         if mod(s, nIter_record) == 0
+         if t - t_collect > 0.1
+             t_collect = t;
              m = m + 1;
              % Increase size of arrays if necessary
              if m > length(meanFitness)
@@ -283,6 +283,7 @@ for k = 1:N_mu
                  meanFitness = [meanFitness, zeros(1,S)];
                  maxD = [maxD, zeros(1,S)];
                  maxR = [maxR, zeros(1,S)];
+                 evenness = [evenness, zeros(1,S)];
              end
              % Group strains with the same distance and store them in Y:
              alive = (V + I ~= 0);
@@ -295,20 +296,21 @@ for k = 1:N_mu
                 sumI = sum(shortI(d_logical));
                 Y(m,j) = sumV + sumI;
              end
-             % Number of distinct amino acid sequences:
-             % nAA = length(unique(aseq(~cellfun('isempty', aseq))));  
+              
              % Collect all data
              meanFitness(m) = sum(r.*(V+I)) / sum(V+I);
              meanDistance(m) = sum(dtot.*(V+I)) / sum(V+I);
              data(m,:) = [t, ntot, nAA, U, sum(I), sum(V)];
              maxD(m) = max(dtot);
              maxR(m) = max(r);
+             evenness(m) = 1 - sum((V/sum(V)).^2); % Simpson's index as evenness
          end
          %display progression every 1000 iterations
          if mod(s, nIter_print) == 0
              disp(['t=',num2str(t),', \t ntot=',num2str(ntot), ', \t U=', num2str(U)])
          end
     end % while-loop
+    
     % Remove zeros at the end of vectors
 	Y = Y(1:m, :);
     data = data(1:m, :);
@@ -316,6 +318,8 @@ for k = 1:N_mu
     meanDistance = meanDistance(1:m);
     maxD = maxD(1:m);
     maxR = maxR(1:m);
+    evenness = evenness(1:m);
+    
     % Calculate stationary values:
     time = data(:,1)';
     delta_t = time(2:end) - time(1:end-1);
@@ -324,7 +328,8 @@ for k = 1:N_mu
     statY(k,:) = (delta_t * relativeY(2:end, :)) / time(end) ;
     statD(k) = sum(meanDistance(2:end) .* delta_t) / time(end);
     statR(k) = sum(meanFitness(2:end) .* delta_t) / time(end); 
-    % Collect error threshold detectors
+    
+    % Collect information for each simulation
     Uarray(k) = U;
     titer(k).alpha = alpha;
     titer(k).Mu = mu;
@@ -335,11 +340,12 @@ for k = 1:N_mu
     titer(k).I_sum = sum(I);
     titer(k).V_sum = sum(V);
     titer(k).data = data;
-    titer(k).statY = statY(k);
+    titer(k).statY = statY(k,:);
     titer(k).statD = statD(k);
     titer(k).statR = statR(k);
     titer(k).maxD = maxD;
     titer(k).maxR = maxR;
+    titer(k).evenness = evenness;
 end % for-loop
 % fname = ['Gillespie', num2str(x), '.mat']
 % save(fname, 'titer','mu','statY','statD','statR','maxD','maxR',...      
