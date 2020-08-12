@@ -67,12 +67,11 @@ La = length(pRefSeq);
 d0 = zeros(length(pNames),1);                       % distance of WTseq to fittest strain
 
 % Error threshold detectors
-Uarray = zeros(1, N_mu);                            % store the number of not-infected cells at the end of the infection
 statD = zeros(1, N_mu);                             % stationary value of number of mutations
 statR = zeros(1, N_mu);                             % stationary value of relative fitness
 statY = zeros(N_mu, La + 1);                    	% stationary value of particle number
 
-titer = struct();
+data = struct();
 
 S = 1e3;                                            % initial size of arrays
 t_collect = 0;
@@ -116,8 +115,8 @@ for k = 1:N_mu
     Y = zeros(S, La + 1);                                                   % matrix for number of viruses with distance d from WT seq.
    	Y(1,1) = V(1);      
     
-    data = zeros(S, 6);                                                     % matrix to collect time, # distinct genotypes, # distinct phenotypes, # not-infected cells, # infected cells, # viruses.
-  	data(1,:) = [t, ntot, nAA, U, sum(I), sum(V)];                          
+    data_collect = zeros(S, 6);                                                     % matrix to collect time, # distinct genotypes, # distinct phenotypes, # not-infected cells, # infected cells, # viruses.
+  	data_collect(1,:) = [t, ntot, nAA, U, sum(I), sum(V)];                          
     meanDistance = zeros(1,S);                                              % mean number of mutations
     meanFitness = zeros(1,S);                                               % mean fitness of population
  	meanFitness(1) = r0; 
@@ -301,7 +300,7 @@ for k = 1:N_mu
              % Increase size of arrays if necessary
              if m > length(meanFitness)
                  Y = [Y; zeros(S, La + 1)];
-                 data = [data; zeros(S, 6)];
+                 data_collect = [data_collect; zeros(S, 6)];
                  meanDistance = [meanDistance, zeros(1,S)];
                  meanFitness = [meanFitness, zeros(1,S)];
                  maxD = [maxD, zeros(1,S)];
@@ -323,7 +322,7 @@ for k = 1:N_mu
              % Collect all data
              meanFitness(m) = sum(r.*(V+I)) / sum(V+I);
              meanDistance(m) = sum(dtot.*(V+I)) / sum(V+I);
-             data(m,:) = [t, ntot, nAA, U, sum(I), sum(V)];
+             data_collect(m,:) = [t, ntot, nAA, U, sum(I), sum(V)];
              maxD(m) = max(dtot);
              maxR(m) = max(r);
 
@@ -336,7 +335,7 @@ for k = 1:N_mu
     
     % Remove zeros at the end of vectors
 	Y = Y(1:m, :);
-    data = data(1:m, :);
+    data_collect = data_collect(1:m, :);
     meanFitness = meanFitness(1:m);
     meanDistance = meanDistance(1:m);
     maxD = maxD(1:m);
@@ -344,7 +343,7 @@ for k = 1:N_mu
     evenness = evenness(1:m);
     
     % Calculate stationary values:
-    time = data(:,1)';
+    time = data_collect(:,1)';
     delta_t = time(2:end) - time(1:end-1);
     sumY = 1 ./ sum(Y,2);
     relativeY = Y .* repmat(sumY, 1, size(Y,2));             
@@ -353,22 +352,29 @@ for k = 1:N_mu
     statR(k) = sum(meanFitness(2:end) .* delta_t) / time(end); 
     
     % Collect information for each simulation
-    Uarray(k) = U;
-    titer(k).alpha = alpha;
-    titer(k).Mu = mu;
-    titer(k).t = t;
-    titer(k).ntot = ntot;
-    titer(k).nAA = nAA;
-    titer(k).U_sum = sum(U);
-    titer(k).I_sum = sum(I);
-    titer(k).V_sum = sum(V);
-    titer(k).data = data;
-    titer(k).statY = statY(k,:);
-    titer(k).statD = statD(k);
-    titer(k).statR = statR(k);
-    titer(k).maxD = maxD;
-    titer(k).maxR = maxR;
-    titer(k).evenness = evenness;
+    data(k).alpha = alpha;
+    data(k).Mu = mu;
+    
+    data(k).t_end = t;
+    data(k).ntot_end = ntot;
+    data(k).nAA_end = nAA;
+    data(k).U_end = U;
+    data(k).I_sum_end = sum(I);
+    data(k).V_sum_end = sum(V);
+    
+    data(k).t = data(:,1);
+    data(k).ntot = data(:,2);
+    data(k).nAA = data(:,3);
+    data(k).U = data(:,4);
+    data(k).I_sum = data(:,5);
+    data(k).V_sum = data(:,6);
+
+    data(k).statY = statY(k,:);
+    data(k).statD = statD(k);
+    data(k).statR = statR(k);
+    data(k).maxD = maxD;
+    data(k).maxR = maxR;
+    data(k).evenness = evenness;
 end % for-loop
 
 
