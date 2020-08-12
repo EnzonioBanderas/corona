@@ -142,7 +142,13 @@ replicate(i0, myStream, ...
     newAAsequence_mut = newAAsequence_mut(backmutation_correction_AA);
     
     % Check if no premature STOP codon emerged
-    
+    stopCodons = strcmp('*', newAAsequence_mut);
+    if sum(stopCodons) > 0
+        stopCodons_loc = newAAsequence_loc(stopCodons);
+        if stopCodons_loc(1) ~= L
+            return
+        end
+    end
     
     % newsequence is truly new, add it to sequence cell array
     ntot = ntot + 1;

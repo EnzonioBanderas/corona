@@ -23,7 +23,7 @@ translateCodon = geneticcode();
 [beta, sigma] = logisticRegressionProteins();
 
 %% Initialize ############################################################# 
-U0 = 1e4;                   % initial number of uninfected cells
+U0 = 1e5;                   % initial number of uninfected cells
 
 if U0 == 1e5
     r0 = 1.5 ;
@@ -40,6 +40,7 @@ elseif U0 == 1e4
 end
 mu = 1e-6;
 
+params = struct();
 params.('U0') = U0;
 params.('r0') = r0;
 params.('a') = a;
@@ -378,7 +379,6 @@ for k = 1:N_mu
 end % for-loop
 
 
-fname = ['Output/Gillespie.mat']
-save(fname, 'titer','mu','statY','statD','statR','maxD','maxR', 'params'...      
-    '-v7.3');
+fname = ['Output/Gillespie.mat'];
+save(fname, 'titer', 'params', '-v7.3');
 %end 
