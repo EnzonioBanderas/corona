@@ -2,7 +2,7 @@ clear all
 close all
 clc
 
-load('Gillespie1.mat');
+load('Gillespie.mat');
 t = 'R = prod(ri)';
 mu_array = 1e-6;
 data = titer(1).data;

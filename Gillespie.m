@@ -23,17 +23,37 @@ translateCodon = geneticcode();
 [beta, sigma] = logisticRegressionProteins();
 
 %% Initialize ############################################################# 
-a = 2e-5;                   % infection rate per day.
-b = 0.4;                    % death/clearance rate of infected cells per day.
-V0 = 400;                    % initial number of viruses
 U0 = 1e4;                   % initial number of uninfected cells
+
+if U0 == 1e5
+    r0 = 1.5 ;
+    a =  4.5e-04 ;
+    b =  0.9 ;
+    c =  0.9 ;
+    V0 = 400;
+elseif U0 == 1e4
+    r0 = 1.5 ;
+    a =  4.5e-3 ;
+    b =  0.9 ;
+    c =  0.9 ;
+    V0 = 40;
+end
+mu = 1e-6;
+
+params.('U0') = U0;
+params.('r0') = r0;
+params.('a') = a;
+params.('b') = b;
+params.('c') = c;
+params.('V0') = V0;
+params.('mu') = mu;
+
 ksi = 1.0;                 	% fitness decay
 T = inf;                    % maximal time (days)
 t_anti = inf;
-mu = 1e-6;
+
 mu_array = mu;
 %mu_array = linspace(1e-6, 1e-3,5);                 % mutation rate(s). Can be a single float (one mutation rate) or an array.
-r0 = 2;                                             % Fitness of reference sequence 
 alpha_array = 1;
 antiviral = false;
 
@@ -116,14 +136,14 @@ for k = 1:N_mu
          end    
          s = s + 1;                                                         
          % calculate total reaction rate
-         Rtot = (a*U + b)*sum(V) + b*sum(I) + sum(r.*I) + ...
+         Rtot = (a*U + b)*sum(V) + c*sum(I) + sum(r.*I) + ...
                 stim*sum(I) + b*sum(Tcells) + sum(k*Tcells_perStrain.*I); 
          % take time step
          dt = (1/Rtot) * log(1/rand(myStream));                                       % time step is exponentially distributed and depends on total reaction rate
          t = t + dt;
          % choose a random number between 0 and Rtot
          rnd = Rtot * rand(myStream);
-         c = 0;
+         z = 0;
          % Increase the size of arrays if it is necessary
          existing = find(V+I);
          if existing(end) + 10 > length(V)
@@ -152,16 +172,16 @@ for k = 1:N_mu
          for i = existing    %1:find(V+I, 1,'last')?   
              % choose which of the 4 reactions will occur 
              % and for which strain
-             c = c + a*U*V(i);                                              % R1: infection by strain i
-             if c > rnd                                                         
+             z = z + a*U*V(i);                                              % R1: infection by strain i
+             if z > rnd                                                         
                  I(i) = I(i) + 1;                                               
                  V(i) = V(i) - 1;
                  U = U - 1;      
                  reaction_happened = true;      
                  break
              end
-             c = c + r(i)*I(i);                                             % R2: replication of strain i
-             if c > rnd
+             z = z + r(i)*I(i);                                             % R2: replication of strain i
+             if z > rnd
                  i0 = i;
                 [seq_loc, seq_mut, seq_nMut, ...
                     aseq_loc, aseq_mut, aseq_nMut, ...
@@ -179,8 +199,8 @@ for k = 1:N_mu
                  reaction_happened = true;
                 break
              end
-             c = c + b*I(i);                                                % R3: clearence of a cell infected by strain i
-             if c > rnd
+             z = z + c*I(i);                                                % R3: clearence of a cell infected by strain i
+             if z > rnd
                  I(i) = I(i) - 1;
                  if V(i) + I(i) == 0    % if the strain has gone extinct, remove it
                      i0 = i;
@@ -201,8 +221,8 @@ for k = 1:N_mu
                  reaction_happened = true;
                  break % for-loop
              end
-             c = c + b*V(i);                                                % R4: clearence of a free viral particle of strain i
-             if c > rnd
+             z = z + b*V(i);                                                % R4: clearence of a free viral particle of strain i
+             if z > rnd
                  V(i) = V(i) - 1;
                  if V(i) + I(i) == 0    % if the strain has gone extinct, remove it
                      i0 = i;
@@ -229,15 +249,15 @@ for k = 1:N_mu
              Epitope2Strain_index = aseqUniq_i{iEpitope};
              Epitope2Strain_index = Epitope2Strain_index(I(Epitope2Strain_index)~=0);
              
-             c = c + stim*sum(I(Epitope2Strain_index));                                             % Stimulation: Infected cell stimulates formation of T-cell specific to virus
-             if c > rnd
+             z = z + stim*sum(I(Epitope2Strain_index));                                             % Stimulation: Infected cell stimulates formation of T-cell specific to virus
+             if z > rnd
                  Tcells(iEpitope) = Tcells(iEpitope) + 1;
                  Tcells_perStrain(Epitope2Strain_index) = Tcells_perStrain(Epitope2Strain_index) + 1;
                  break
              end 
              
-             c = c + kill*sum(I(Epitope2Strain_index))*Tcells(iEpitope);                                           % Killing: Cytotoxic T cells kill infected cells
-             if c > rnd
+             z = z + kill*sum(I(Epitope2Strain_index))*Tcells(iEpitope);                                           % Killing: Cytotoxic T cells kill infected cells
+             if z > rnd
                  i0 = Epitope2Strain_index(randi(myStream, length(Epitope2Strain_index)));
                  I(i0) = I(i0) - 1;
                  if V(i0) + I(i0) == 0    % if the strain has gone extinct, remove it
@@ -258,8 +278,8 @@ for k = 1:N_mu
                  break
              end
              
-             c = c + b*Tcells(iEpitope);                                                % Clearance: Immune cells die
-             if c > rnd
+             z = z + b*Tcells(iEpitope);                                                % Clearance: Immune cells die
+             if z > rnd
                  Tcells(iEpitope) = Tcells(iEpitope) - 1;
                  Tcells_perStrain(Epitope2Strain_index) = Tcells_perStrain(Epitope2Strain_index) - 1;
 %                Use custom remove_immune instead to keep AAs in memory as
@@ -350,10 +370,9 @@ for k = 1:N_mu
     titer(k).maxR = maxR;
     titer(k).evenness = evenness;
 end % for-loop
-% fname = ['Gillespie', num2str(x), '.mat']
-% save(fname, 'titer','mu','statY','statD','statR','maxD','maxR',...      
-%     '-v7.3');
+
+
 fname = ['Output/Gillespie.mat']
-save(fname, 'titer','mu','statY','statD','statR','maxD','maxR',...      
+save(fname, 'titer','mu','statY','statD','statR','maxD','maxR', 'params'...      
     '-v7.3');
 %end 
