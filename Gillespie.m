@@ -26,7 +26,7 @@ La = length(pRefSeq);
 L = length(gRefSeq);        % length of genome sequence
 a = 2e-5;                   % infection rate per day.
 b = 0.4;                    % death/clearance rate of infected cells per day.
-V0 = 400;                   % initial number of viruses
+V0 = 400;                    % initial number of viruses
 U0 = 1e4;                   % initial number of uninfected cells
 ksi = 1.0;                 	% fitness decay
 T = inf;                    % maximal time (days)
@@ -47,10 +47,10 @@ statY = zeros(N, La + 1);                    	 % stationary value of particle nu
 titer = struct();
 
 S = 1e3;                                            % initial size of arrays
+t_collect = 0;
 
 % Start for-loop over mutation rates ######################################
 for k = 1:N
-    r0 = 2
     %mu = mu_array(k);                                                       % mutation rate
     alpha = alpha_array(k)
     % initialize
@@ -94,6 +94,7 @@ for k = 1:N
            	break
          end
          if t >= t_anti && antiviral == false
+             disp('NOOOO')
              r0 = alpha*r0;
              r  = alpha*r;
              antiviral = true;
@@ -160,7 +161,8 @@ for k = 1:N
              end
          end % for-loop   
          % Collect statistics every 100 iterations:
-         if mod(s,100) == 0
+         if t - t_collect > 0.1
+             t_collect = t;
              m = m + 1;
              % Increase size of arrays if necessary
              if m > length(meanFitness)
@@ -190,9 +192,6 @@ for k = 1:N
              data(m,:) = [t, ntot, nAA, U, sum(I), sum(V)];
              maxD(m) = max(dtot);
              maxR(m) = max(r);
-         end
-         %display progression every 1000 iterations
-         if mod(s,1000) == 0
              disp(['t=',num2str(t),', ntot=',num2str(ntot)])
          end
     end % while-loop

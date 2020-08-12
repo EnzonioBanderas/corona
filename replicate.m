@@ -48,7 +48,7 @@ function [seq_loc, seq_mut, aseq_loc, aseq_mut, ntot, nAA, V, r, I, d, dtot, seq
     newsequence_mut = newsequence_mut(sortmut);
     
     % Correct newsequence for backmutation to reference 
-    backmutation_correction = gRefSeq(newsequence_loc)~=newsequence_mut;
+    backmutation_correction = gRefSeq(newsequence_loc) ~= newsequence_mut;
     newsequence_loc = newsequence_loc(backmutation_correction);
     newsequence_mut = newsequence_mut(backmutation_correction);
     
@@ -80,13 +80,6 @@ function [seq_loc, seq_mut, aseq_loc, aseq_mut, ntot, nAA, V, r, I, d, dtot, seq
             end
         end
     end
-
-    % newsequence is truly new, add it to sequence cell array
-    ntot = ntot + 1;
-    newLoc = find(V + I == 0, 1); % location of new strain
-    seq_loc{newLoc} = newsequence_loc;
-    seq_mut{newLoc} = newsequence_mut;
-    seq_nMut(newLoc) = nMut;
 
     % Translate newsequence to AA sequence by looking at which codons are
     % affected in new mutations (info not in newsequence_loc but in loc).
@@ -128,6 +121,16 @@ function [seq_loc, seq_mut, aseq_loc, aseq_mut, ntot, nAA, V, r, I, d, dtot, seq
     backmutation_correction_AA = pRefSeq(newAAsequence_loc)~=newAAsequence_mut;
     newAAsequence_loc = newAAsequence_loc(backmutation_correction_AA);
     newAAsequence_mut = newAAsequence_mut(backmutation_correction_AA);
+    
+    % Check if no premature STOP codon emerged
+    
+    
+    % newsequence is truly new, add it to sequence cell array
+    ntot = ntot + 1;
+    newLoc = find(V + I == 0, 1); % location of new strain
+    seq_loc{newLoc} = newsequence_loc;
+    seq_mut{newLoc} = newsequence_mut;
+    seq_nMut(newLoc) = nMut;
     
     aseq_loc{newLoc} = newAAsequence_loc;
     aseq_mut{newLoc} = newAAsequence_mut;
