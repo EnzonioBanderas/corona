@@ -5,39 +5,47 @@ clear all
 load('Gillespie.mat');
 
 % data [t, ntot, nAA, U, sum(I), sum(V)]
-data = vertcat(titer(:).data); % before doing this individually average values within time bins! In that way SEM is determined by iteration number, not by sampling resolution
-
-% group time intervals
 timeStep = 0.25;
+nIter = length(titer);
+nMeasure = size(titer(1).data, 2);
+for k = 1:nIter
+    data = titer(k).data;
+    
+    timeInt = round(data(:,1)/timeStep);
+    time = unique(timeInt)*timeStep;
+    timeGroups = findgroups(timeInt);
+    
+    % Fill in data_mean values
+    data_mean = zeros(length(time), nMeasure);
+    data_mean(:, 1) = time;
+    for iMeasure = 2:nMeasure
+        data_mean(:, iMeasure) = splitapply(@mean, data(:,iMeasure), timeGroups);
+%         ntot_std = splitapply(@std, data(:,iMeasure), timeGroups);
+%         ntot_length = splitapply(@length, data(:,iMeasure), timeGroups);
+%         data_sem(:, 2) = ntot_std ./ sqrt(ntot_length);
+    end
+    
+    % Assign data_mean to iteration structure
+    titer(k).data_mean = data_mean;
+end
+data = vertcat(titer(:).data_mean); % concatenate meaned data
+
+% Repeat process but also calculate SEM
 timeInt = round(data(:,1)/timeStep);
-time = unique(timeInt)*dt;
+time = unique(timeInt)*timeStep;
 timeGroups = findgroups(timeInt);
-% [timeGroups, sortVec] = sort(timeGroups);
-% data = data(sortVec, :);
 
-% number of genotypic variants
-ntot_mean = splitapply(@mean, data(:,2), timeGroups);
-ntot_std = splitapply(@std, data(:,2), timeGroups);
-ntot_length = splitapply(@length, data(:,2), timeGroups);
-ntot_sem = ntot_std ./ sqrt(ntot_length);
-
-% number of uninfected cells
-U_mean = splitapply(@mean, data(:,4), timeGroups);
-U_std = splitapply(@std, data(:,4), timeGroups);
-U_length = splitapply(@length, data(:,4), timeGroups);
-U_sem = U_std ./ sqrt(U_length);
-
-% sum of infected cells
-I_sum_mean = splitapply(@mean, data(:,5), timeGroups);
-I_sum_std = splitapply(@std, data(:,5), timeGroups);
-I_sum_length = splitapply(@length, data(:,5), timeGroups);
-I_sum_sem = I_sum_std ./ sqrt(I_sum_length);
-
-% sum of viral particles
-V_sum_mean = splitapply(@mean, data(:,6), timeGroups);
-V_sum_std = splitapply(@std, data(:,6), timeGroups);
-V_sum_length = splitapply(@length, data(:,6), timeGroups);
-V_sum_sem = V_sum_std ./ sqrt(V_sum_length);
+% Fill in data_mean, data_std, data_length and data_sem values
+data_mean = zeros(length(time), nMeasure); data_mean(:, 1) = time;
+data_std = zeros(length(time), nMeasure); data_std(:, 1) = time;
+data_length = zeros(length(time), nMeasure); data_length(:, 1) = time;
+data_sem = zeros(length(time), nMeasure); data_sem(:, 1) = time;
+for iMeasure = 2:nMeasure
+    data_mean(:, iMeasure) = splitapply(@mean, data(:,iMeasure), timeGroups);
+    data_std(:, iMeasure) = splitapply(@std, data(:,iMeasure), timeGroups);
+    data_length(:, iMeasure) = splitapply(@length, data(:,iMeasure), timeGroups);
+    data_sem(:, iMeasure) = data_std(:, iMeasure) ./ sqrt(data_length(:, iMeasure));
+end
 
 
 
@@ -45,34 +53,34 @@ figure()
 subplot(2,1,1)
 c = colormap('lines');
 hold on
-plot(time, U_mean, 'Color', c(1,:), 'linewidth', 2)
-plot(time, I_sum_mean, 'Color', c(2,:), 'linewidth', 2)
-plot(time, V_sum_mean, 'Color', c(3,:), 'linewidth', 2)
+plot(time, data_mean(:, 4), 'Color', c(1,:), 'linewidth', 2)
+plot(time, data_mean(:, 5), 'Color', c(2,:), 'linewidth', 2)
+plot(time, data_mean(:, 6), 'Color', c(3,:), 'linewidth', 2)
 % figure
 % V_sum_std_logical = V_sum_std~=0;
 % V_sum_std_plot = V_sum_std(V_sum_std_logical);
 % time_plot = time(V_sum_std_logical);
 legend('Number of uninfected cells', 'Number of infected cells','Number of free viral particles','AutoUpdate','off')
-patch_y = [U_mean + U_sem; ...
-           U_mean(end) - U_sem(end); ...
-           U_mean(end:-1:1) - U_sem(end:-1:1); ...
-           U_mean(1) + U_sem(1)];
+patch_y = [data_mean(:, 4) + data_sem(:, 4); ...
+           data_mean(end, 4) - data_sem(end, 4); ...
+           data_mean(end:-1:1, 4) - data_sem(end:-1:1, 4); ...
+           data_mean(1, 4) + data_sem(1, 4)];
 patch_y(patch_y == 0) = 0.01;
 patch([time; time(end); time(end:-1:1); time(1)], ...
      patch_y, ...
      c(1,:), 'FaceAlpha', 0.3)
-patch_y = [I_sum_mean + I_sum_sem; ...
-           I_sum_mean(end) - I_sum_sem(end); ...
-           I_sum_mean(end:-1:1) - I_sum_sem(end:-1:1); ...
-           I_sum_mean(1) + I_sum_sem(1)];
+patch_y = [data_mean(:, 5) + data_sem(:, 5); ...
+           data_mean(end, 5) - data_sem(end, 5); ...
+           data_mean(end:-1:1, 5) - data_sem(end:-1:1, 5); ...
+           data_mean(1, 5) + data_sem(1, 5)];
 patch_y(patch_y == 0) = 0.01;
 patch([time; time(end); time(end:-1:1); time(1)], ...
      patch_y, ...
      c(2,:), 'FaceAlpha', 0.3)
- patch_y = [V_sum_mean + V_sum_sem; ...
-           V_sum_mean(end) - V_sum_sem(end); ...
-           V_sum_mean(end:-1:1) - V_sum_sem(end:-1:1); ...
-           V_sum_mean(1) + V_sum_sem(1)];
+ patch_y = [data_mean(:, 6) + data_sem(:, 6); ...
+           data_mean(end, 6) - data_sem(end, 6); ...
+           data_mean(end:-1:1, 6) - data_sem(end:-1:1, 6); ...
+           data_mean(1, 6) + data_sem(1, 6)];
 patch_y(patch_y == 0) = 0.01;
 patch([time; time(end); time(end:-1:1); time(1)], ...
      patch_y, ...
@@ -84,20 +92,29 @@ set(gca, 'YScale', 'log')
 set(gca, 'Fontsize', 24)
 
 subplot(2,1,2)
-plot(time, ntot_mean, 'Color', c(1,:), 'linewidth', 2)
- patch_y = [ntot_mean + ntot_sem; ...
-           ntot_mean(end) - ntot_sem(end); ...
-           ntot_mean(end:-1:1) - ntot_sem(end:-1:1); ...
-           ntot_mean(1) + ntot_sem(1)];
-patch_y(patch_y == 0) = 0.01;
+hold on
+plot(time, data_mean(:, 2), 'Color', c(1,:), 'linewidth', 2)
+plot(time, data_mean(:, 3), 'Color', c(2,:), 'linewidth', 2)
+legend('Number of distinct nucleotide sequences', 'Number of distinct AA sequences', 'AutoUpdate','off')
+patch_y = [data_mean(:, 2) + data_sem(:, 2); ...
+           data_mean(end, 2) - data_sem(end, 2); ...
+           data_mean(end:-1:1, 2) - data_sem(end:-1:1, 2); ...
+           data_mean(1, 2) + data_sem(1, 2)];
+% patch_y(patch_y == 0) = 0.01;
 patch([time; time(end); time(end:-1:1); time(1)], ...
      patch_y, ...
      c(1,:), 'FaceAlpha', 0.3)
+patch_y = [data_mean(:, 3) + data_sem(:, 3); ...
+           data_mean(end, 3) - data_sem(end, 3); ...
+           data_mean(end:-1:1, 3) - data_sem(end:-1:1, 3); ...
+           data_mean(1, 3) + data_sem(1, 3)];
+% patch_y(patch_y == 0) = 0.01;
+patch([time; time(end); time(end:-1:1); time(1)], ...
+     patch_y, ...
+     c(2,:), 'FaceAlpha', 0.3)
 xlabel('Time (days)')
 ylabel('Number of viral strains')
 title('Number of viral strains vs time')
-legend('Number of distinct nucleotide sequences')
-% legend('Number of distinct nucleotide sequences', 'Number of distinct AA sequences')
 set(gca, 'Fontsize', 24)
 
 % figure()

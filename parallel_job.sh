@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #PBS -N v9_test			 # job name
-#PBS -M C.L.M.vandenHeuvel@student.tudelft.nl  	 # specify e-mail address to send message to
+#PBS -M E.C.Nio@student.tudelft.nl  	 # specify e-mail address to send message to
 #PBS -m ae                               	 # mail when job is aborted (a) or terminates (e) 
-#PBS -l nodes=5:ppn=20                           # number of nodes & 
+#PBS -l nodes=5:ppn=10                           # number of nodes & 
 
 
 ID=${PBS_JOBID:0:6}		# get number of job-idb
@@ -23,21 +23,21 @@ exec 1>$OUTDIR/${ID}.out	# create output file for systemt
 exec 2>$OUTDIR/${ID}.err	# create error file
 
 # Copy files to output directory
-scp $WORKDIR/Gillespie_v9.m $OUTDIR
-scp $WORKDIR/Functions/* $OUTDIR
+scp $WORKDIR/*.m $OUTDIR
+scp -r $WORKDIR/Data $OUTDIR
 
 cd $OUTDIR
 
 module load matlab
 
 myfunction() {
-	matlab -nosplash -nodisplay -noFigureWindows -nodesktop -r "Gillespie_v9 $1"
+	matlab -nosplash -nodisplay -noFigureWindows -nodesktop -r "Gillespie_func $1"
 }
 export -f myfunction
 
-parallel myfunction ::: {1..100}
+parallel myfunction ::: {10001..20000}
 
-# ececute code
+# execute code
 
 
 
