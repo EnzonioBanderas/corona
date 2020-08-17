@@ -1,22 +1,5 @@
 clear all
 
-% filePath = dir('data_iteration/data_iteration*');
-% nFiles = length(filePath)
-% data_cell = cell(1, nFiles)
-% for iFile = 1:nFile
-%   load(file(iFile))
-%   data_cell{iFile} = data
-%   params_cell{iFile} = params
-% end
-%
-% get responses and input by concatenation, first between structures and
-% then between structure array fields
-
-% data_concat = [data_cell{:}]
-
-% [data_concat(:).c]
-% vertcat(data_concat(:).c)
-
 titer_fn = dir('titer*/titer*');
 load([titer_fn(1).folder, '\', titer_fn(1).name])
 nTiter_fn = length(titer_fn);

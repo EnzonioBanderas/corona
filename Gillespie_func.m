@@ -401,13 +401,14 @@ function Gillespie_func(x)
         data(k).maxD = maxD;
         data(k).maxR = maxR;
         data(k).evenness = ntot_e;
-        data(k).V_peak = max(data(k).V_sum);
+        [data(k).V_peak, peakIndex] = max(data(k).V_sum);
+        data(k).V_peakTime = data(k).t(peakIndex);
     end % for-loop
 
 
     simString = 'data_iteration';
     mkdir(simString)
-    save([simString, '/', simString, '_', x, '.mat'], 'data','-v7.3');
+    save([simString, '/', simString, '_', x, '.mat'], 'data', 'params', '-v7.3');
 
     % fname = ['Output/Gillespie.mat'];
     % save(fname, 'data', 'params', '-v7.3');
