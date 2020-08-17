@@ -5,6 +5,10 @@
 x = '1';
 myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));
 
+p = sobolset(1, 'Skip', str2num(x)-1);
+% p = scramble(p,'MatousekAffineOwen');
+rand_sobol = net(p, 1); % generate 1 points of the sobol sequence
+
 %% Viral evolution with Gillespie algorithm
 
 % Source of model: 
@@ -23,7 +27,7 @@ translateCodon = geneticcode();
 [beta, sigma] = logisticRegressionProteins();
 
 %% Initialize ############################################################# 
-U0 = 1e5;                   % initial number of uninfected cells
+U0 = 1e4;                   % initial number of uninfected cells
 
 if U0 == 1e5
     r0 = 1.5 ;
@@ -33,7 +37,8 @@ if U0 == 1e5
     V0 = 400;
 elseif U0 == 1e4
     r0 = 1.5 ;
-    a =  4.5e-3 ;
+%     a =  4.5e-3 ;
+    a = 10^((rand_sobol+1)*-2);
     b =  0.9 ;
     c =  0.9 ;
     V0 = 40;
@@ -48,6 +53,7 @@ params.('b') = b;
 params.('c') = c;
 params.('V0') = V0;
 params.('mu') = mu;
+
 
 ksi = 1.0;                 	% fitness decay
 T = inf;                    % maximal time (days)
@@ -116,15 +122,20 @@ for k = 1:N_mu
     Y = zeros(S, La + 1);                                                   % matrix for number of viruses with distance d from WT seq.
    	Y(1,1) = V(1);      
     
-    data_collect = zeros(S, 6);                                                     % matrix to collect time, # distinct genotypes, # distinct phenotypes, # not-infected cells, # infected cells, # viruses.
-  	data_collect(1,:) = [t, ntot, nAA, U, sum(I), sum(V)];                          
+    data_collect = zeros(S, 10);                                                     % matrix to collect time, # distinct genotypes, # distinct phenotypes, # not-infected cells, # infected cells, # viruses. # infection occurrences # cell death occurences # virus clearance occurences # replication occurrences
     meanDistance = zeros(1,S);                                              % mean number of mutations
     meanFitness = zeros(1,S);                                               % mean fitness of population
  	meanFitness(1) = r0; 
     maxD = zeros(1,S);
     maxR = zeros(1,S);
     maxR(1) = r0;
-    evenness = zeros(1,S);
+    ntot_e = zeros(1,S);
+    ntot_e_I = zeros(1,S);
+    aN = 0;
+    bN = 0;
+    cN = 0;
+    rN = 0;
+    data_collect(1,:) = [t, ntot, nAA, U, sum(I), sum(V), aN, bN, cN, rN];  
     
     % Start while loop ####################################################
     while t < T
@@ -178,6 +189,7 @@ for k = 1:N_mu
                  V(i) = V(i) - 1;
                  U = U - 1;      
                  reaction_happened = true;      
+                 aN = aN + 1;
                  break
              end
              z = z + r(i)*I(i);                                             % R2: replication of strain i
@@ -196,7 +208,8 @@ for k = 1:N_mu
                     gRefSeq, L, pRefSeq, beta, proteinLocation, translateCodon, ...
                     aseqUniq_loc, aseqUniq_mut, aseqUniq_nMut, ...
                     aseqUniq_n, aseqUniq_i, aseqUniq_r);
-                 reaction_happened = true;
+                rN = rN + 1;
+                reaction_happened = true;
                 break
              end
              z = z + c*I(i);                                                % R3: clearence of a cell infected by strain i
@@ -218,6 +231,7 @@ for k = 1:N_mu
                         aseqUniq_loc, aseqUniq_mut, aseqUniq_nMut, ...
                         aseqUniq_n, aseqUniq_i, aseqUniq_r);
                  end
+                 cN = cN + 1;
                  reaction_happened = true;
                  break % for-loop
              end
@@ -240,6 +254,7 @@ for k = 1:N_mu
                         aseqUniq_loc, aseqUniq_mut, aseqUniq_nMut, ...
                         aseqUniq_n, aseqUniq_i, aseqUniq_r);
                  end
+                 bN = bN + 1;
                  reaction_happened = true;
                  break % for-loop
              end
@@ -301,12 +316,13 @@ for k = 1:N_mu
              % Increase size of arrays if necessary
              if m > length(meanFitness)
                  Y = [Y; zeros(S, La + 1)];
-                 data_collect = [data_collect; zeros(S, 6)];
+                 data_collect = [data_collect; zeros(S, 10)];
                  meanDistance = [meanDistance, zeros(1,S)];
                  meanFitness = [meanFitness, zeros(1,S)];
                  maxD = [maxD, zeros(1,S)];
                  maxR = [maxR, zeros(1,S)];
-                 evenness = [evenness, zeros(1,S)];
+                 ntot_e = [ntot_e, zeros(1,S)];
+                 ntot_e_I = [ntot_e_I, zeros(1,S)];
              end
              % Group strains with the same distance and store them in Y:
              alive = (V + I ~= 0);
@@ -323,13 +339,18 @@ for k = 1:N_mu
              % Collect all data
              meanFitness(m) = sum(r.*(V+I)) / sum(V+I);
              meanDistance(m) = sum(dtot.*(V+I)) / sum(V+I);
-             data_collect(m,:) = [t, ntot, nAA, U, sum(I), sum(V)];
+             data_collect(m,:) = [t, ntot, nAA, U, sum(I), sum(V), aN, bN, cN, rN];
              maxD(m) = max(dtot);
              maxR(m) = max(r);
 
-             evenness(m) = 1 - sum((V/sum(V)).^2); % Simpson's index as evenness
+             % V evenness by NT
+             ntot_e(m) = 1 - sum((V/sum(V)).^2); % Simpson's index as evenness
+             % I evenness by NT
+             ntot_e_I(m) = 1 - sum((I/sum(I)).^2); % Simpson's index as evenness
+             % V evenness by AA
+             % I evenness by AA
              
-             disp(['t=',num2str(t),', \t ntot=',num2str(ntot), ', \t U=', num2str(U)])
+             fprintf(['t=',num2str(t),', \t ntot=',num2str(ntot), ', \t U=', num2str(U), ' \n'])
          end
              
     end % while-loop
@@ -341,7 +362,7 @@ for k = 1:N_mu
     meanDistance = meanDistance(1:m);
     maxD = maxD(1:m);
     maxR = maxR(1:m);
-    evenness = evenness(1:m);
+    ntot_e = ntot_e(1:m);
     
     % Calculate stationary values:
     time = data_collect(:,1)';
@@ -363,22 +384,32 @@ for k = 1:N_mu
     data(k).I_sum_end = sum(I);
     data(k).V_sum_end = sum(V);
     
-    data(k).t = data(:,1);
-    data(k).ntot = data(:,2);
-    data(k).nAA = data(:,3);
-    data(k).U = data(:,4);
-    data(k).I_sum = data(:,5);
-    data(k).V_sum = data(:,6);
+    data(k).t = data_collect(:,1);
+    data(k).ntot = data_collect(:,2);
+    data(k).nAA = data_collect(:,3);
+    data(k).U = data_collect(:,4);
+    data(k).I_sum = data_collect(:,5);
+    data(k).V_sum = data_collect(:,6);
+    data(k).aN = data_collect(:,7);
+    data(k).bN = data_collect(:,8);
+    data(k).cN = data_collect(:,9);
+    data(k).rN = data_collect(:,10);
 
     data(k).statY = statY(k,:);
     data(k).statD = statD(k);
     data(k).statR = statR(k);
     data(k).maxD = maxD;
     data(k).maxR = maxR;
-    data(k).evenness = evenness;
+    data(k).evenness = ntot_e;
+    data(k).V_peak = max(data(k).V_sum);
 end % for-loop
 
 
+% simString = 'data';
+% mkdir(simString)
+% save([simString, '/', simString, '_', x, '.mat'], 'data','-v7.3');
+    
 fname = ['Output/Gillespie.mat'];
-save(fname, 'titer', 'params', '-v7.3');
+save(fname, 'data', 'params', '-v7.3');
+
 %end 

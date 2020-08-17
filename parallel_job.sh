@@ -31,11 +31,11 @@ cd $OUTDIR
 module load matlab
 
 myfunction() {
-	matlab -nosplash -nodisplay -noFigureWindows -nodesktop -r "Gillespie_func $1"
+	matlab -nosplash -nodisplay -noFigureWindows -nodesktop -r "Gillespie $1"
 }
 export -f myfunction
 
-parallel myfunction ::: {10001..20000}
+parallel myfunction ::: {1..1000}
 
 # execute code
 
