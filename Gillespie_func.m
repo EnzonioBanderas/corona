@@ -37,8 +37,9 @@ function Gillespie_func(x)
         V0 = 400;
     elseif U0 == 1e4
         r0 = 1.5 ;
-    %     a =  4.5e-3 ;
-        a = 10^((rand_sobol+1)*-2);
+%         a =  4.5e-3 ;
+%         a = 10^((rand_sobol+1)*-2); % 10^-2 to 10^-4 (log)
+        a = ((rand_sobol*3)+3)*(10^-3); % 3*10^-3 to 6*10^-3 (lin)
         b =  0.9 ;
         c =  0.9 ;
         V0 = 40;
@@ -406,7 +407,7 @@ function Gillespie_func(x)
     end % for-loop
 
 
-    simString = 'data_iteration';
+    simString = 'a_linear_uncertainty';
     mkdir(simString)
     save([simString, '/', simString, '_', x, '.mat'], 'data', 'params', '-v7.3');
 
