@@ -1,4 +1,4 @@
-function r = replicationRate(d, r0, sigma, beta)
+function r = replicationRate(d, r0, sigma, beta, distribution)
 % This function determines the fitness of a strain with a distance d from
 % the reference sequence, which has fitness r0.
 % The fitness is normal distributed with mean mu (predicted by logistic 
@@ -11,8 +11,22 @@ function r = replicationRate(d, r0, sigma, beta)
         else
             b = beta(:, i);
             mu = predict(b, d(i));
-            replRate = max(sigma(i)*randn + mu, 0);
+            
+            if strcmp(distribution, 'normal') 
+                pd = makedist('Normal','mu',mu,'sigma',sigma(i));
+                t = truncate(pd,0,inf);
+                replRate = random(t); 
+                
+            elseif strcmp(distribution, 'gamma')     
+                shape = mu^2 / sigma(i);
+                scale = sigma(i) / mu;
+                replRate = random('Gamma', shape, scale);
+                
+            else
+                disp('Invalid distribution name');
+            end
         end
+        
         rArray(i) = replRate;
     end
     r = r0 * prod(rArray);

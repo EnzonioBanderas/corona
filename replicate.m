@@ -10,7 +10,7 @@ replicate(i0, myStream, ...
     sigma, r0, ...
     gRefSeq, L, pRefSeq, beta, proteinLocation, translateCodon, ...
     aseqUniq_loc, aseqUniq_mut, aseqUniq_nMut, ...
-    aseqUniq_n, aseqUniq_i, aseqUniq_r)
+    aseqUniq_n, aseqUniq_i, aseqUniq_r, distribution)
 % This function lets a virus of strain i0 replicate. During the
 % replication, each nucleotide has a probability mu to mutate.
 % If a new strain is formed by mutation, the fitness of this new strain is
@@ -137,13 +137,12 @@ replicate(i0, myStream, ...
     newAAsequence_mut = newAAsequence_mut(sortmut);
     
     % Correct newAAsequence for backmutation to reference 
-    backmutation_correction_AA = pRefSeq(newAAsequence_loc)~=newAAsequence_mut;
-    newAAsequence_loc = newAAsequence_loc(backmutation_correction_AA);
-    newAAsequence_mut = newAAsequence_mut(backmutation_correction_AA);
+%     backmutation_correction_AA = pRefSeq(newAAsequence_loc)~=newAAsequence_mut;
+%     newAAsequence_loc = newAAsequence_loc(backmutation_correction_AA);
+%     newAAsequence_mut = newAAsequence_mut(backmutation_correction_AA);
     
     % Check if no premature STOP codon emerged
-    stopCodons = ismember('*', newAAsequence_mut);
-    if stopCodons
+    if ismember('*', newAAsequence_mut)
         return
     end
     
@@ -174,8 +173,8 @@ replicate(i0, myStream, ...
     % the loop is exited, a new replication rate is generated and nAA is increased.
     for iUniqAA = existing
         if nMutAA==aseqUniq_nMut(iUniqAA)
-            if all(newAAsequence_loc==aseqUniq_loc{iUniqAA})
-                if all(newAAsequence_mut==aseqUniq_mut{iUniqAA})
+            if isequal(newAAsequence_loc, aseqUniq_loc{iUniqAA})
+                if isequal(newAAsequence_mut, aseqUniq_mut{iUniqAA})
                     r(newLoc) = aseqUniq_r(iUniqAA);
                     aseqUniq_n(iUniqAA) = aseqUniq_n(iUniqAA) + 1;
                     aseqUniq_i{iUniqAA} = [aseqUniq_i{iUniqAA}, newLoc];
@@ -183,15 +182,10 @@ replicate(i0, myStream, ...
 %                     aseq_unique_n(iAA) = aseq_unique_n(iAA) + 1;
                     return
                 end
-            elseif nMutAA==0 % exception for reference
-                r(newLoc) = aseqUniq_r(iUniqAA);
-                aseqUniq_n(iUniqAA) = aseqUniq_n(iUniqAA) + 1;
-                aseqUniq_i{iUniqAA} = [aseqUniq_i{iUniqAA}, newLoc];
-%                     aseq_unique_n(iAA) = aseq_unique_n(iAA) + 1;
             end
         end
     end
-    r(newLoc) = replicationRate(di, r0, sigma, beta);
+    r(newLoc) = replicationRate(di, r0, sigma, beta, distribution);
     nAA = nAA + 1; % number of amino acids currently present
     
     newLoc_aseqUniq = find(~existing_logical, 1); % location of new strain

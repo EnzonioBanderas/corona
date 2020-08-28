@@ -28,9 +28,15 @@ remove(i0, ...
     % the function and do not decrease AA.
     existing = find(aseqUniq_n ~= 0);
     for iUniqAA = existing 
+        
         if oldAAsequence_nMut==aseqUniq_nMut(iUniqAA)
-            if all(oldAAsequence_loc==aseqUniq_loc{iUniqAA})
-                if all(oldAAsequence_mut==aseqUniq_mut{iUniqAA})
+            
+            if length(oldAAsequence_loc) ~= length(aseqUniq_loc{iUniqAA})
+                disp('NOO')
+            end
+            
+            if all(oldAAsequence_loc == aseqUniq_loc{iUniqAA})
+                if all(oldAAsequence_mut == aseqUniq_mut{iUniqAA})
                     % The old sequence is identical to this currently
                     % present unique sequence. Reduce the number which
                     % tracks how many strains have this AA by 1.

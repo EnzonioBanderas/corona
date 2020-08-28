@@ -7,7 +7,7 @@ function [beta, sigma] = logisticRegressionProteins()
 % each protein
 
     % load the data
-    data = load('Data/mismatchBoolean0706.mat');
+    data = load('Data/mismatchBoolean0821.mat');
     mismatchBoolean = data.mismatchBoolean;
     proteinNames = fields(mismatchBoolean);
     % initialize beta arrays:

@@ -4,8 +4,9 @@ clc
 
 load('Gillespie.mat');
 t = 'R = prod(ri)';
-mu_array = 1e-6;
 data = titer(1).data;
+mu_array = params.mu;
+
 %%
 if length(mu_array) == 1    % if only one mutation rate:
     

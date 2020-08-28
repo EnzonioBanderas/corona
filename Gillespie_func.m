@@ -1,7 +1,9 @@
-% clear all
-% close all
+clear all
+close all
 
 function Gillespie_func(x)
+    tic;
+    
 %     x = '1';
     myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));
 
@@ -28,6 +30,7 @@ function Gillespie_func(x)
 
     %% Initialize ############################################################# 
     U0 = 1e4;                   % initial number of uninfected cells
+    distribution = 'normal';
 
     if U0 == 1e5
         r0 = 1.5 ;
@@ -43,8 +46,15 @@ function Gillespie_func(x)
         b =  0.9 ;
         c =  0.9 ;
         V0 = 40;
+    elseif U0 == 1e6
+        r0 = 1.5 ;
+        a =  4.5e-5 ;
+        b =  0.9 ;
+        c =  0.9 ;
+        V0 = 4e3;
     end
-    mu = 1e-6;
+    alpha = 1;
+    mu_array = 1e-6;
 
     params = struct();
     params.('U0') = U0;
@@ -53,16 +63,11 @@ function Gillespie_func(x)
     params.('b') = b;
     params.('c') = c;
     params.('V0') = V0;
-    params.('mu') = mu;
+    params.('mu') = mu_array;
 
-
-    ksi = 1.0;                 	% fitness decay
     T = inf;                    % maximal time (days)
     t_anti = inf;
 
-    mu_array = mu;
-    %mu_array = linspace(1e-6, 1e-3,5);                 % mutation rate(s). Can be a single float (one mutation rate) or an array.
-    alpha_array = 1;
     antiviral = false;
 
     kill = 0;                   % killing of infected cells by immune cells
@@ -74,21 +79,13 @@ function Gillespie_func(x)
     La = length(pRefSeq);  
     d0 = zeros(length(pNames),1);                       % distance of WTseq to fittest strain
 
-    % Error threshold detectors
-    statD = zeros(1, N_mu);                             % stationary value of number of mutations
-    statR = zeros(1, N_mu);                             % stationary value of relative fitness
-    statY = zeros(N_mu, La + 1);                    	% stationary value of particle number
-
     data = struct();
 
     S = 1e3;                                            % initial size of arrays
-    t_collect = 0;
-
 
     % Start for-loop over mutation rates ######################################
     for k = 1:N_mu
-        %mu = mu_array(k);                                                     % mutation rate
-        alpha = alpha_array(k);
+        mu = mu_array(k);                                                     % mutation rate
         % initialize
         disp(mu)
         U = U0;                                                                % number of infected cells.
@@ -109,6 +106,7 @@ function Gillespie_func(x)
         s = 0;                                                                  % counter for while loop
         m = 1;                                                                  % counter to collect stats
         t = 0.0;                                                                % initial time (days)
+        t_collect = 0.0;
         % arrays to keep track of viral strains
         V = zeros(1, S);                                                        % number of free viral particles per strain
         V(1) = V0;
@@ -123,7 +121,7 @@ function Gillespie_func(x)
         Y = zeros(S, La + 1);                                                   % matrix for number of viruses with distance d from WT seq.
         Y(1,1) = V(1);      
 
-        data_collect = zeros(S, 10);                                                     % matrix to collect time, # distinct genotypes, # distinct phenotypes, # not-infected cells, # infected cells, # viruses. # infection occurrences # cell death occurences # virus clearance occurences # replication occurrences
+        data_collect = zeros(S, 11);                                                     % matrix to collect time, # distinct genotypes, # distinct phenotypes, # not-infected cells, # infected cells, # viruses. # infection occurrences # cell death occurences # virus clearance occurences # replication occurrences
         meanDistance = zeros(1,S);                                              % mean number of mutations
         meanFitness = zeros(1,S);                                               % mean fitness of population
         meanFitness(1) = r0; 
@@ -136,12 +134,12 @@ function Gillespie_func(x)
         bN = 0;
         cN = 0;
         rN = 0;
-        data_collect(1,:) = [t, ntot, nAA, U, sum(I), sum(V), aN, bN, cN, rN];  
+        data_collect(1,:) = [t, ntot, nAA, U, sum(I), sum(V), aN, bN, cN, rN, 0]; 
+        diversity = zeros(1,S);
 
         % Start while loop ####################################################
         while t < T
              if t >= t_anti && antiviral == false
-                 disp('NOOOO')
                  r0 = alpha*r0;
                  r  = alpha*r;
                  antiviral = true;
@@ -208,9 +206,9 @@ function Gillespie_func(x)
                         sigma, r0, ...
                         gRefSeq, L, pRefSeq, beta, proteinLocation, translateCodon, ...
                         aseqUniq_loc, aseqUniq_mut, aseqUniq_nMut, ...
-                        aseqUniq_n, aseqUniq_i, aseqUniq_r);
                     rN = rN + 1;
-                    reaction_happened = true;
+                        aseqUniq_n, aseqUniq_i, aseqUniq_r, distribution);
+                     reaction_happened = true;
                     break
                  end
                  z = z + c*I(i);                                                % R3: clearence of a cell infected by strain i
@@ -255,7 +253,6 @@ function Gillespie_func(x)
                             aseqUniq_loc, aseqUniq_mut, aseqUniq_nMut, ...
                             aseqUniq_n, aseqUniq_i, aseqUniq_r);
                      end
-                     bN = bN + 1;
                      reaction_happened = true;
                      break % for-loop
                  end
@@ -305,25 +302,26 @@ function Gillespie_func(x)
              end
              end
 
-             % Stop if there are no more viral particles left:
+            % Stop if there are no more viral particles left:
              if sum(I+V) == 0                                                  	
                 break
              end
 
-             % Collect statistics every 100 iterations:
+             % Collect statistics every 0.1 days:
              if t - t_collect > 0.1
                  t_collect = t;
                  m = m + 1;
                  % Increase size of arrays if necessary
                  if m > length(meanFitness)
                      Y = [Y; zeros(S, La + 1)];
-                     data_collect = [data_collect; zeros(S, 10)];
+                     data_collect = [data_collect; zeros(S, 11)];
                      meanDistance = [meanDistance, zeros(1,S)];
                      meanFitness = [meanFitness, zeros(1,S)];
                      maxD = [maxD, zeros(1,S)];
                      maxR = [maxR, zeros(1,S)];
                      ntot_e = [ntot_e, zeros(1,S)];
                      ntot_e_I = [ntot_e_I, zeros(1,S)];
+                     diversity = [diversity, zeros(1,S)];
                  end
                  % Group strains with the same distance and store them in Y:
                  alive = (V + I ~= 0);
@@ -338,12 +336,16 @@ function Gillespie_func(x)
                  end
 
                  % Collect all data
-                 meanFitness(m) = sum(r.*(V+I)) / sum(V+I);
-                 meanDistance(m) = sum(dtot.*(V+I)) / sum(V+I);
-                 data_collect(m,:) = [t, ntot, nAA, U, sum(I), sum(V), aN, bN, cN, rN];
+                 viralTiter = shortV + shortI;
+
+                 meanFitness(m) = sum(r(alive) .* viralTiter) / sum(viralTiter);
+                 meanDistance(m) = sum(dtot(alive) .* viralTiter) / sum(viralTiter);
+                 data_collect(m,:) = [t, ntot, nAA, U, sum(I), sum(V), aN, bN, cN, rN, sum(viralTiter)];
                  maxD(m) = max(dtot);
                  maxR(m) = max(r);
 
+                 diversity(m) = 1 - sum((viralTiter/sum(viralTiter)).^2); % Simpson's index as diversity
+                 
                  % V evenness by NT
                  ntot_e(m) = 1 - sum((V/sum(V)).^2); % Simpson's index as evenness
                  % I evenness by NT
@@ -357,23 +359,30 @@ function Gillespie_func(x)
         end % while-loop
 
         % Remove zeros at the end of vectors
-        Y = Y(1:m, :);
+        maxY = find(sum(Y) > 0, 1, 'last');
+
+        Y = Y(1:m, :);         % discard the last row of zeros   
         data_collect = data_collect(1:m, :);
         meanFitness = meanFitness(1:m);
         meanDistance = meanDistance(1:m);
         maxD = maxD(1:m);
         maxR = maxR(1:m);
         ntot_e = ntot_e(1:m);
+        ntot_e_I = ntot_e_I(1:m);
+        diversity = diversity(1:m);
 
         % Calculate stationary values:
-        time = data_collect(:,1)';
+        time = data_collect(:, 1);
         delta_t = time(2:end) - time(1:end-1);
         sumY = 1 ./ sum(Y,2);
         relativeY = Y .* repmat(sumY, 1, size(Y,2));             
-        statY(k,:) = (delta_t * relativeY(2:end, :)) / time(end) ;
-        statD(k) = sum(meanDistance(2:end) .* delta_t) / time(end);
-        statR(k) = sum(meanFitness(2:end) .* delta_t) / time(end); 
-
+        statY = (delta_t * relativeY(2:end,:)) / time(end);
+        statD = sum(meanDistance(2:end) .* delta_t) / time(end);
+        statR = sum(meanFitness(2:end) .* delta_t) / time(end); 
+        statDiv = sum(diversity(2:end) .* delta_t) / time(end);
+        
+        
+        
         % Collect information for each simulation
         data(k).alpha = alpha;
         data(k).Mu = mu;
@@ -395,23 +404,30 @@ function Gillespie_func(x)
         data(k).bN = data_collect(:,8);
         data(k).cN = data_collect(:,9);
         data(k).rN = data_collect(:,10);
+        data(k).viralTiter = data_collect(:,11);
 
-        data(k).statY = statY(k,:);
-        data(k).statD = statD(k);
-        data(k).statR = statR(k);
+        data(k).statY = statY;
+        data(k).relativeY = relativeY(:, 1:maxY);
+        data(k).statD = statD;
+        data(k).statR = statR;
+        data(k).statDiv = statDiv;
         data(k).maxD = maxD;
         data(k).maxR = maxR;
+        data(k).diversity = diversity;
         data(k).evenness = ntot_e;
+        data(k).evenness_I = ntot_e_I;
         [data(k).V_peak, peakIndex] = max(data(k).V_sum);
         data(k).V_peakTime = data(k).t(peakIndex);
     end % for-loop
 
-
+    disp(['Simulation time ', num2str(toc)])
+    
     simString = 'a_linear_uncertainty';
+%     fname = 'Output/Gillespie.mat';
+%     save(fname, 'titer', 'params', '-v7.3');
     mkdir(simString)
-    save([simString, '/', simString, '_', x, '.mat'], 'data', 'params', '-v7.3');
-
-    % fname = ['Output/Gillespie.mat'];
-    % save(fname, 'data', 'params', '-v7.3');
-
+    save([simString, filesep, simString, '_', x, '.mat'], 'data', 'params', '-v7.3');
 end 
+
+
+
