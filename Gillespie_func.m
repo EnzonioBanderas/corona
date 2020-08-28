@@ -6,7 +6,7 @@ function Gillespie_func(x)
     myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));
 
     p = sobolset(1, 'Skip', str2num(x)-1);
-    % p = scramble(p,'MatousekAffineOwen');
+    p = scramble(p,'MatousekAffineOwen');
     rand_sobol = net(p, 1); % generate 1 points of the sobol sequence
 
     %% Viral evolution with Gillespie algorithm

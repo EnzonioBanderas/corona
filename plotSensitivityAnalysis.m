@@ -2,15 +2,15 @@ clear all
 
 
 
-N = 100;
-for x = 1:N
-    x_str = num2str(x);
-    Gillespie_func(x_str);
-end
+% N = 100;
+% for x = 1:N
+%     x_str = num2str(x);
+%     Gillespie_func(x_str);
+% end
 
 
 
-filePath = dir('data_iteration/data_iteration*');
+filePath = dir('a_linear_uncertainty/a_linear_uncertainty*');
 nFile = length(filePath);
 data_cell = cell(1, nFile);
 params_cell = cell(1, nFile);
