@@ -1,10 +1,9 @@
-clear all
-close all
+function Gillespie_transmission(x)
 
-%function Gillespie(x)
 tic;
-x = '1';
 myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));
+outputFolder = ['Output_', x];
+mkdir(outputFolder);
 
 %% Viral evolution with Gillespie algorithm
 
@@ -26,6 +25,7 @@ translateCodon = geneticcode();
 %% Initialize ############################################################# 
 U0 = 1e5;                   % initial number of uninfected cells
 distribution = 'normal';
+Nind = 100;
 
 if U0 == 1e5
     r0 = 1.5 ;
@@ -39,15 +39,16 @@ elseif U0 == 1e4
     b =  0.9 ;
     c =  0.9 ;
     V0 = 40;
-elseif U0 == 1e6
+ elseif U0 == 1e6
     r0 = 1.5 ;
     a =  4.5e-5 ;
     b =  0.9 ;
     c =  0.9 ;
     V0 = 4e3;
+    
 end
 alpha = 1;
-mu_array = 1e-6;
+mu = 1e-6;
 
 params = struct();
 params.('U0') = U0;
@@ -56,73 +57,113 @@ params.('a') = a;
 params.('b') = b;
 params.('c') = c;
 params.('V0') = V0;
-params.('mu') = mu_array;
+params.('mu') = mu;
 
 T = inf;                    % maximal time (days)
 t_anti = inf;
-
 antiviral = false;
 
 kill = 0;                   % killing of infected cells by immune cells
 stim = 0;                   % stimulation of immune cells by infected cells
 
 % Follows
-N_mu = length(mu_array);                            % number of mutation rates to test
 L = length(gRefSeq);                                % length of genome sequence
 La = length(pRefSeq);  
 d0 = zeros(length(pNames),1);                       % distance of WTseq to fittest strain
+S = 1e3;
 
 titer = struct();
 
-S = 1e3;                                            % initial size of arrays
+t_L = 4.6;                                          % Latent period (days)
+t_I = 5;                                            % infectious period (days)
+
+% arrays to keep track of viral strains
+transV = zeros(1, S);                                                        % number of free viral particles per strain
+transV(1) = V0;
+transR = zeros(1, S);                                                        % fitness per strain
+transR(1) = r0;                                                              
+transD = zeros(length(pNames), S);                                           % distance to reference per strain per protein
+transD(:,1) = d0;
+transDtot = zeros(1, S);                                                     % total distance to reference (sum of all proteins) per strain
+% arrays to collect stats
+transY = zeros(S, La + 1);                                                   % matrix for number of viruses with distance d from WT seq.
+transY(1,1) = V0;
+
+transTcells = zeros(1, S);
+transTcells_perStrain = zeros(1, S);
+
+transSeq_loc = cell(1,S);
+transAseq_loc = cell(1,S);
+transSeq_mut = cell(1,S);
+transAseq_mut = cell(1,S);
+transSeq_nMut = zeros(1,S);        
+transAseq_nMut = zeros(1,S);
+
+transAseqUniq_loc = cell(1,S);
+transAseqUniq_mut = cell(1,S);
+transAseqUniq_nMut = zeros(1,S);
+transAseqUniq_n = zeros(1,S); transAseqUniq_n(1) = 1;
+transAseqUniq_i = cell(1,S); transAseqUniq_i{1} = 1;
+transAseqUniq_r = zeros(1,S); transAseqUniq_r(1) = r0;
 
 % Start for-loop over mutation rates ######################################
-for k = 1:N_mu
-    mu = mu_array(k);                                                     % mutation rate
+for k = 1:Nind
     % initialize
-    disp(mu)
-    U = U0;                                                                % number of infected cells.
-    seq_loc = cell(1,S); aseq_loc = cell(1,S);                             % number of infected cells.
-    seq_mut = cell(1,S); aseq_mut = cell(1,S);
-    seq_nMut = zeros(1,S); aseq_nMut = zeros(1,S);                         % cell array to keep track of aa sequences   
+    disp(k)
     
-    aseqUniq_loc = cell(1,S);
-    aseqUniq_mut = cell(1,S);
-    aseqUniq_nMut = zeros(1,S);
-    aseqUniq_n = zeros(1,S); aseqUniq_n(1) = 1;
-    aseqUniq_i = cell(1,S); aseqUniq_i{1} = 1;
-    aseqUniq_r = zeros(1,S); aseqUniq_r(1) = r0;
+    U = U0;                                                                 % number of infected cells.
+    t = 0.0;                                                                % initial time (days)
+    t_collect = t;
+
+    % Arrays to keep track of viral strains
+    I = zeros(1, S);                                                        % number of infected cells per strain
+    V = transV;
+    Y = transY;
+    r = transR;
+    d = transD;
+    dtot = transDtot;
+
+    seq_loc = transSeq_loc;
+    aseq_loc = transAseq_loc;
+    seq_mut = transSeq_mut;
+    aseq_mut = transAseq_mut;
+    seq_nMut = transSeq_nMut;
+    aseq_nMut = transAseq_nMut;
+    
+    aseqUniq_loc = transAseqUniq_loc;
+    aseqUniq_mut = transAseqUniq_mut;
+    aseqUniq_nMut = transAseqUniq_nMut;
+    aseqUniq_n = transAseqUniq_n;
+    aseqUniq_i = transAseqUniq_i;
+    aseqUniq_r = transAseqUniq_r;
+
+    Tcells = transTcells;
+    Tcells_perStrain = transTcells_perStrain;
     
     % counters
-    ntot = 1;                                                               % initial number of distinct viral genotypes
-    nAA = 1;                                                                % initial number of distinct viral phenotypes
+    ntot = sum(V + I > 0);                                              	% initial number of distinct viral genotypes
+    nAA = sum(aseqUniq_n > 0);                                              % initial number of distinct viral phenotypes
     s = 0;                                                                  % counter for while loop
     m = 1;                                                                  % counter to collect stats
-    t = 0.0;                                                                % initial time (days)
-    t_collect = 0.0;
-    % arrays to keep track of viral strains
-    V = zeros(1, S);                                                        % number of free viral particles per strain
-    V(1) = V0;
-    I = zeros(1, S);                                                        % number of infected cells per strain
-    Tcells = zeros(1, S);
-    Tcells_perStrain = zeros(1, S);
-    r = zeros(1, S);                                                        % fitness per strain
-    r(1) = r0;                                                              
-    d = zeros(length(pNames), S);                                           % distance to reference per strain per protein
-    dtot = zeros(1, S);                                                     % total distance to reference (sum of all proteins) per strain
+
     % arrays to collect stats
-    Y = zeros(S, La + 1);                                                   % matrix for number of viruses with distance d from WT seq.
-   	Y(1,1) = V(1);      
-    
     data = zeros(S, 6);                                                     % matrix to collect time, # distinct genotypes, # distinct phenotypes, # not-infected cells, # infected cells, # viruses.
-  	data(1,:) = [t, ntot, nAA, U, sum(I), sum(V)];                          
-    meanDistance = zeros(1,S);                                              % mean number of mutations
-    meanFitness = zeros(1,S);                                               % mean fitness of population
- 	meanFitness(1) = r0; 
+    data(1,:) = [t, ntot, nAA, U, sum(I), sum(V)];     
+    meanD = zeros(1,S);                                              % mean number of mutations
+    meanD(1) = sum(dtot .* V) / sum(V);
+    meanR = zeros(1,S);                                               % mean fitness of population
+    meanR(1) = sum(r.* V) / sum(V);
     maxD = zeros(1,S);
+    maxD(1) = max(dtot);
     maxR = zeros(1,S);
-    maxR(1) = r0;
-    diversity = zeros(1,S);
+    maxR(1) = max(r);
+    diversity = 1 - sum((V/sum(V)).^2);
+
+    t_transmission = t_L + t_I * rand;                                     % transmission occurs at a random time between t_L and t_L+t_I
+    transmissionBoolean = false; 
+
+    endInfection = struct();
+    transmission = struct();
         
     % Start while loop ####################################################
     while t < T
@@ -143,6 +184,7 @@ for k = 1:N_mu
          z = 0;
          % Increase the size of arrays if it is necessary
          existing = find(V+I);
+         existing_epitope = find(aseqUniq_n);
          if existing(end) + 10 > length(V)
              V = [V, zeros(1,S)];
              I = [I, zeros(1,S)];
@@ -153,9 +195,7 @@ for k = 1:N_mu
              seq_loc = [seq_loc, cell(1,S)]; aseq_loc = [aseq_loc, cell(1,S)];
              seq_mut = [seq_mut, cell(1,S)]; aseq_mut = [aseq_mut, cell(1,S)];
              seq_nMut = [seq_nMut, zeros(1,S)]; aseq_nMut = [aseq_nMut, zeros(1,S)];
-         end
-         existing_epitope = find(aseqUniq_n);
-         if existing(end) + 10 > length(Tcells)
+         
              Tcells = [Tcells, zeros(1,S)];
              aseqUniq_loc = [aseqUniq_loc, cell(1,S)];
              aseqUniq_mut = [aseqUniq_mut, cell(1,S)];
@@ -296,11 +336,11 @@ for k = 1:N_mu
              t_collect = t;
              m = m + 1;
              % Increase size of arrays if necessary
-             if m > length(meanFitness)
+             if m > length(meanR)
                  Y = [Y; zeros(S, La + 1)];
                  data = [data; zeros(S, 6)];
-                 meanDistance = [meanDistance, zeros(1,S)];
-                 meanFitness = [meanFitness, zeros(1,S)];
+                 meanD = [meanD, zeros(1,S)];
+                 meanR = [meanR, zeros(1,S)];
                  maxD = [maxD, zeros(1,S)];
                  maxR = [maxR, zeros(1,S)];
                  diversity = [diversity, zeros(1,S)];
@@ -320,26 +360,130 @@ for k = 1:N_mu
              % Collect all data
              viralTiter = shortV + shortI;
              
-             meanFitness(m) = sum(r(alive) .* viralTiter) / sum(viralTiter);
-             meanDistance(m) = sum(dtot(alive) .* viralTiter) / sum(viralTiter);
+             meanR(m) = sum(r(alive) .* viralTiter) / sum(viralTiter);
+             meanD(m) = sum(dtot(alive) .* viralTiter) / sum(viralTiter);
              data(m,:) = [t, ntot, nAA, U, sum(I), sum(viralTiter)];
              maxD(m) = max(dtot);
              maxR(m) = max(r);
 
              diversity(m) = 1 - sum((viralTiter/sum(viralTiter)).^2); % Simpson's index as diversity
              
-             disp(['t=',num2str(t),', \t ntot=',num2str(ntot), ', \t U=', num2str(U)])
+             %disp(['t=',num2str(t),', \t ntot=',num2str(ntot), ', \t U=', num2str(U)])
          end
+         
+          % transmission:
+         if t >= t_transmission && transmissionBoolean == false
+            transmissionBoolean = true;
+            
+            % get last occupied entry in V and I vectors 
+            
+            tempY = Y(1:m, :);
+
+            % sample a random pool of 400 viruses.
+            totV = sum(V);
+            pool = randi(totV, [1, V0]);
+            % initiate arrays for transmission
+            transV = zeros(1, S); 
+            transR = zeros(1, S);
+            transD = zeros(length(pNames), S);
+            transDtot = zeros(1, S);
+
+            transSeq_loc = cell(1,S);
+            transAseq_loc = cell(1,S);
+            transSeq_mut = cell(1,S);
+            transAseq_mut = cell(1,S);
+            transSeq_nMut = zeros(1,S);
+            transAseq_nMut = zeros(1,S);
+            
+            transAseqUniq_loc = cell(1,S);
+            % add 'dummy' 1 values:
+            transAseqUniq_mut = cell(1,S); transAseqUniq_mut(:) = {'1'};
+            transAseqUniq_nMut = zeros(1,S);
+            transAseqUniq_n = zeros(1,S); 
+            transAseqUniq_i = cell(1,S); 
+            transAseqUniq_r = zeros(1,S);
+
+            g = 0;
+            p = 0;
+            nu = 1;
+            for i = 1:length(V)
+                newg = g + V(i);
+                numTransmitted = sum(pool > g & pool <= newg);
+                if numTransmitted > 0
+                    p = p + 1;
+                    transV(p) = numTransmitted;
+                 	transR(p) = r(i);
+                    transD(:,p) = d(:,i);
+                    transDtot(p) = dtot(i);
+
+                    transSeq_loc{p} = seq_loc{i};
+                    transSeq_mut{p} = seq_mut{i};
+                    transSeq_nMut(p) = seq_nMut(i);
+                    
+                    transAseq_nMut(p) = aseq_nMut(i);
+                    transAseq_loc{p} = aseq_loc{i};
+                  	transAseq_mut{p} = aseq_mut{i};
+                    
+                    % Unique arrays:
+                    alreadyPresent = false;
+                    for j = 1 : nu
+                        if isequal(transAseqUniq_loc{j}, aseq_loc{i})
+                            if isequal(transAseqUniq_mut{j}, aseq_mut{i})
+                            	alreadyPresent = true;
+                                transAseqUniq_n(j) = transAseqUniq_n(j) + numTransmitted;
+                                transAseqUniq_i{j} = [transAseqUniq_i{j}, p];
+                                break % for loop over unique AA seqs
+                            end  
+                        end
+                    end
+                        
+                    if ~alreadyPresent
+                        transAseqUniq_loc{nu} = aseq_loc{i};
+                        transAseqUniq_mut{nu} = aseq_mut{i};
+                        transAseqUniq_nMut(nu) = aseq_nMut(i);
+                        transAseqUniq_n(nu) = numTransmitted;
+                        transAseqUniq_i{nu} = p;
+                        transAseqUniq_r(nu) = r(i);
+                        nu = nu + 1;
+                    end                    
+                end
+                g = newg;
+            end
+            % remove the 'dummy' 1 values again
+            transAseqUniq_mut(strcmp(transAseqUniq_mut, '1')) = {[]};
+            
+            % transmission Y array:
+            alive = (transV ~= 0);
+            shortV = transV(alive);
+            transY = zeros(S, La + 1);                                     	% number of free viral particles per strain
+            for j = 1:max(transDtot) + 1
+                dist = j - 1;
+                d_logical = (transDtot(alive) == dist);
+                sumV = sum(shortV(d_logical));
+                transY(1,j) = sumV;
+            end      
+            maxV = find(transV, 1,'last');
+
+            transmission.('V') = transV(1:maxV);
+            transmission.('r') = transR(1:maxV);
+            transmission.('seq_loc') = transSeq_loc(1:maxV);
+            transmission.('seq_mut') = transSeq_mut(1:maxV);
+            transmission.('tTransmission') = t_transmission;
+            transmission.('transD') = transD(:, 1:maxV);
+            transmission.('transR') = transR(1:maxV);
+            
+            %transmission.('aseq_loc') = transAseq_loc(1:maxV);
+            %transmission.('aseq_mut') = transAseq_mut(1:maxV);
+        end % if transmission
              
     end % while-loop
-    
     % Remove zeros at the end of vectors
     maxY = find(sum(Y) > 0, 1, 'last');
         
 	Y = Y(1:m, :);         % discard the last row of zeros   
     data = data(1:m, :);
-    meanFitness = meanFitness(1:m);
-    meanDistance = meanDistance(1:m);
+    meanR = meanR(1:m);
+    meanD = meanD(1:m);
     maxD = maxD(1:m);
     maxR = maxR(1:m);
     diversity = diversity(1:m);
@@ -350,34 +494,35 @@ for k = 1:N_mu
     sumY = 1 ./ sum(Y,2);
     relativeY = Y .* repmat(sumY, 1, size(Y,2));             
     statY = (delta_t * relativeY(2:end,:)) / time(end);
-    statD = sum(meanDistance(2:end) .* delta_t) / time(end);
-    statR = sum(meanFitness(2:end) .* delta_t) / time(end); 
+    statD = sum(meanD(2:end) .* delta_t) / time(end);
+    statR = sum(meanR(2:end) .* delta_t) / time(end); 
     statDiv = sum(diversity(2:end) .* delta_t) / time(end);
     
     % Collect information for each simulation
-    titer(k).alpha = alpha;
-    titer(k).Mu = mu;
-    titer(k).t = t;
-    titer(k).ntot = ntot;
-    titer(k).nAA = nAA;
-    titer(k).U_sum = sum(U);
-    titer(k).I_sum = sum(I);
-    titer(k).V_sum = sum(V);
-    titer(k).data = data;
-    titer(k).statY = statY(1:maxY);
-    titer(k).relativeY = relativeY(:, 1:maxY);
-    titer(k).statD = statD;
-    titer(k).statR = statR;
-    titer(k).maxD = maxD;
-    titer(k).maxR = maxR;
-    titer(k).diversity = diversity;
-    titer(k).statDiv = statDiv;
+    titer.alpha = alpha;
+    titer.Mu = mu;
+    titer.t = t;
+    titer.ntot = ntot;
+    titer.nAA = nAA;
+    titer.U_sum = sum(U);
+    titer.I_sum = sum(I);
+    titer.V_sum = sum(V);
+    titer.data = data;
+    titer.statY = statY(1:maxY);
+    titer.relativeY = relativeY(:, 1:maxY);
+    titer.statD = statD;
+    titer.statR = statR;
+    titer.maxD = maxD;
+    titer.maxR = maxR;
+    titer.diversity = diversity;
+    titer.statDiv = statDiv;
+    
+    fname = [outputFolder ,'/Gillespie', num2str(k), '.mat'];
+    save(fname, 'titer', 'params', 'transmission', '-v7.3');
 end % for-loop
 
 disp(['Simulation time ', num2str(toc)])
-fname = 'Output/Gillespie.mat';
-save(fname, 'titer', 'params', '-v7.3');
-%end 
 
+end
 
 
