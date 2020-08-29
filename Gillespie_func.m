@@ -37,12 +37,20 @@ function Gillespie_func(x)
         V0 = 400;
     elseif U0 == 1e4
         r0 = 1.5 ;
-%         a =  4.5e-3 ;
-%         a = 10^((rand_sobol+1)*-2); % 10^-2 to 10^-4 (log)
-        a = ((rand_sobol*3)+3)*(10^-3); % 3*10^-3 to 6*10^-3 (lin)
+%         r0 = 10^((rand_sobol*2)-1); % 1e-1 to 1e1 (log)
+%         r0 = (rand_sobol*2.9)+0.1; % 0.1 to 3 (lin)
+        a =  4.5e-3 ;
+%         a = 10^((rand_sobol*-3)-2); % 10^-2 to 10^-4 (log)
+%         a = (rand_sobol*6e-3)+1.5e-3; % 3*10^-3 to 6*10^-3 (lin)
         b =  0.9 ;
+%         b = 10^((rand_sobol*3)-2); % 1e-2 to 1e1 (log)
+%         b = (rand_sobol*2.9)+0.1; % 0.1 to 3 (lin)
         c =  0.9 ;
+%         c = 10^((rand_sobol*3)-2); % 1e-2 to 1e1 (log)
+%         c = (rand_sobol*2.9)+0.1; % 0.1 to 3 (lin)
         V0 = 40;
+%         V0 = 4*(10^((rand_sobol*4)+0)); % 4e0 to 4e4 (log)
+%         V0 = (rand_sobol*90)+10; % 10 to 100 (lin)
     elseif U0 == 1e6
         r0 = 1.5 ;
         a =  4.5e-5 ;
@@ -51,7 +59,9 @@ function Gillespie_func(x)
         V0 = 4e3;
     end
     alpha = 1;
-    mu_array = 1e-6;
+    mu_array = repmat(1e-6, [1,3]);
+%     mu_array = repmat(10^((rand_sobol*-6)-2), [1,3]); % 1e-8 to 1e-2 (log)
+%     mu_array = repmat((rand_sobol*1e-6)+0.5e-6, [1,3]); % 0.5e-6 to 1.5e-6 (lin)
 
     params = struct();
     params.('U0') = U0;
@@ -144,7 +154,7 @@ function Gillespie_func(x)
              s = s + 1;                                                         
              % calculate total reaction rate
              Rtot = (a*U + b)*sum(V) + c*sum(I) + sum(r.*I) + ...
-                    stim*sum(I) + b*sum(Tcells) + sum(k*Tcells_perStrain.*I); 
+                    stim*sum(I) + b*sum(Tcells) + sum(kill*Tcells_perStrain.*I); 
              % take time step
              dt = (1/Rtot) * log(1/rand(myStream));                                       % time step is exponentially distributed and depends on total reaction rate
              t = t + dt;
@@ -419,7 +429,7 @@ function Gillespie_func(x)
 
     disp(['Simulation time ', num2str(toc)])
     
-    simString = 'a_linear_uncertainty';
+    simString = 'iter3';
 %     fname = 'Output/Gillespie.mat';
 %     save(fname, 'titer', 'params', '-v7.3');
     mkdir(simString)

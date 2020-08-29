@@ -41,8 +41,6 @@ if U0 == 1e5
 elseif U0 == 1e4
     r0 = 1.5 ;
     a =  4.5e-3 ;
-%     a = 10^((rand_sobol+1)*-2); % 10^-2 to 10^-4 (log)
-%     a = ((rand_sobol*3)+3)*(10^-3); % 3*10^-3 to 6*10^-3 (lin)
     b =  0.9 ;
     c =  0.9 ;
     V0 = 40;
@@ -147,7 +145,7 @@ for k = 1:N_mu
          s = s + 1;                                                         
          % calculate total reaction rate
          Rtot = (a*U + b)*sum(V) + c*sum(I) + sum(r.*I) + ...
-                stim*sum(I) + b*sum(Tcells) + sum(k*Tcells_perStrain.*I); 
+                stim*sum(I) + b*sum(Tcells) + sum(kill*Tcells_perStrain.*I); 
          % take time step
          dt = (1/Rtot) * log(1/rand(myStream));                                       % time step is exponentially distributed and depends on total reaction rate
          t = t + dt;
