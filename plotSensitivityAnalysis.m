@@ -2,11 +2,11 @@ clear all
 
 
 
-% N = 100;
-% for x = 1:N
-%     x_str = num2str(x);
-%     Gillespie_func(x_str);
-% end
+N = 100;
+for x = 1:N
+    x_str = num2str(x);
+    Gillespie_func(x_str);
+end
 
 
 

@@ -1,6 +1,3 @@
-clear all
-close all
-
 function Gillespie_func(x)
     tic;
     
@@ -206,8 +203,8 @@ function Gillespie_func(x)
                         sigma, r0, ...
                         gRefSeq, L, pRefSeq, beta, proteinLocation, translateCodon, ...
                         aseqUniq_loc, aseqUniq_mut, aseqUniq_nMut, ...
-                    rN = rN + 1;
                         aseqUniq_n, aseqUniq_i, aseqUniq_r, distribution);
+                    rN = rN + 1;
                      reaction_happened = true;
                     break
                  end
@@ -372,7 +369,7 @@ function Gillespie_func(x)
         diversity = diversity(1:m);
 
         % Calculate stationary values:
-        time = data_collect(:, 1);
+        time = data_collect(:, 1)';
         delta_t = time(2:end) - time(1:end-1);
         sumY = 1 ./ sum(Y,2);
         relativeY = Y .* repmat(sumY, 1, size(Y,2));             
