@@ -2,13 +2,20 @@ function Gillespie_func(x)
     
 %     x = '1';
     disp(x)
+%     nPoint_prev = 1e6;
     myStream = RandStream('mlfg6331_64', 'Seed', str2num(x));
+%     myStream = RandStream('mlfg6331_64', 'Seed', str2num(x)+nPoint_prev);
 
-    p = sobolset(1, 'Skip', str2num(x)-1);
-    p = scramble(p,'MatousekAffineOwen');
-    rand_sobol = net(p, 1); % generate 1 points of the sobol sequence
+%     p = sobolset(1, 'Skip', str2num(x)-1);
+%     p = scramble(p,'MatousekAffineOwen');
+%     rand_sobol = net(p, 1); % generate 1 points of the sobol sequence
     
-    load('params_lhs_1e3_4_Iter1e4.mat', 'params_lhs') % load params_lhs
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    load(['Data', filesep, 'params_lhs_1e4_6_Iter1e3.mat'], 'params_lhs') % load params_lhs
+%     params_lhs = lhsdesign(1e3, 1, 'Iterations', 1e4); % [V0 or mu]
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    nLHS = size(params_lhs, 1);
+    iLHS = mod(str2num(x)-1,nLHS)+1;
 
     %% Viral evolution with Gillespie algorithm
 
@@ -22,55 +29,71 @@ function Gillespie_func(x)
     % Replication: In -> In + Vm  (R2) rate = r(d), reaction_rate = r*I
     % Death : In -> 0             (R3) rate = b
     % Clearence: Vn -> 0          (R4) rate = b
-    %% Get protein and genome reference sequences #############################
+    %% Get protein and genome reference sequences 
     [gRefSeq, pRefSeq, pNames, proteinLocation, genomeLocation] = getRefSeq();
     translateCodon = geneticcode();
     [beta, sigma] = logisticRegressionProteins();
 
-    %% Initialize ############################################################# 
-    U0 = 1e4;                   % initial number of uninfected cells
+    %% Initialize 
+%     U0 = 1e6;                   % initial number of uninfected cells
     distribution = 'normal';
-
-    if U0 == 1e4
-%         a = 4.5e-3;
-%         a = 10^((rand_sobol*-3)-2); % 10^-2 to 10^-4 (log)
-%         a = (rand_sobol*6e-3)+1.5e-3; % 3*10^-3 to 6*10^-3 (lin)
-        a = (params_lhs(str2num(x), 1)*8e-3)+1e-3; % 1*10^-3 to 9*10^-3 (lhs lin)
-%         b = 0.9;
-%         b = 10^((rand_sobol*3)-2); % 1e-2 to 1e1 (log)
-%         b = (rand_sobol*2.9)+0.1; % 0.1 to 3 (lin)
-        b = (params_lhs(str2num(x), 2)*2.9)+0.1; % 0.1 to 3 (lhs lin)
-%         c =  0.9 ;
-%         c = 10^((rand_sobol*3)-2); % 1e-2 to 1e1 (log)
-%         c = (rand_sobol*2.9)+0.1; % 0.1 to 3 (lin)
-        c = b;
-%         r0 = 1.5;
-%         r0 = 10^((rand_sobol*2)-1); % 1e-1 to 1e1 (log)
-%         r0 = (rand_sobol*2.9)+0.1; % 0.1 to 3 (lin)
-        r0 = (params_lhs(str2num(x), 3)*2.9)+0.1; % 0.1 to 3 (lhs lin) 
-%         mu = 1e-6;
-%         mu = 10^((rand_sobol*-6)-2); % 1e-8 to 1e-2 (log)
-%         mu = (rand_sobol*1e-6)+0.5e-6; % 0.5e-6 to 1.5e-6 (lin)
-        mu = (params_lhs(str2num(x), 4)*2.9e-6)+0.1e-6; % 0.1e-6 to 3.0e-6 (lhs lin)
-        V0 = 40;
-%         V0 = round(4*(10^((rand_sobol*4)+0))); % 4e0 to 4e4 (log)
-%         V0 = round((rand_sobol*90)+10); % 10 to 100 (lin)
-    elseif U0 == 1e5
-        a =  4.5e-4 ;
-        b =  0.9 ;
-        c =  0.9 ;
-        r0 = 1.5 ;
-        mu = 1e-6;
-        V0 = 400;
-    elseif U0 == 1e6
-        a =  4.5e-5 ;
-        b =  0.9 ;
-        c =  0.9 ;
-        r0 = 1.5 ;
-        mu = 1e-6;
-        V0 = 4e3;
+    
+    b_center = 0.9;
+    r0_center = 1.5;    
+    mu_center = 1e-6;
+    U0_center = 1e4; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    if U0_center == 1e4
+        a_center =  4.5e-3 ;
+        V0_center = 40;
+    elseif U0_center == 1e5
+        a_center =  4.5e-4 ;
+        V0_center = 400;
+    elseif U0_center == 1e6
+        a_center =  4.5e-5 ;
+        V0_center = 4e3;
     end
     alpha = 1;
+    
+%     a = a_center;
+%     a = 10^((rand_sobol*-3)-2); % 10^-2 to 10^-4 (log)
+%     a = (rand_sobol*6e-3)+1.5e-3; % 3*10^-3 to 6*10^-3 (lin)
+%     a = (params_lhs(iLHS, 1)*8e-3)+1e-3; % 1*10^-3 to 9*10^-3 (lhs lin)
+    a = (params_lhs(iLHS, 1)*a_center*0.4)+a_center*0.8; % 1*10^-3 to 9*10^-3 (lhs lin loc)
+%     a = (params_lhs(iLHS, 1)*a_center*2.9)+a_center*0.1; % 1*10^-3 to 9*10^-3 (lhs lin glob)
+    
+%     b = b_center;%         
+%     b = 10^((rand_sobol*3)-2); % 1e-2 to 1e1 (log)
+%     b = (rand_sobol*2.9)+0.1; % 0.1 to 3 (lin)
+%     b = (params_lhs(iLHS, 2)*2.9)+0.1; % 0.1 to 3 (lhs lin)
+    b = (params_lhs(iLHS, 2)*b_center*0.4)+b_center*0.8; % 1*10^-3 to 9*10^-3 (lhs lin loc)
+%     b = (params_lhs(iLHS, 2)*b_center*2.9)+b_center*0.1; % 1*10^-3 to 9*10^-3 (lhs lin glob)
+
+    c = b;  
+    
+%     r0 = r0_center;
+%     r0 = 10^((rand_sobol*2)-1); % 1e-1 to 1e1 (log)
+%     r0 = (rand_sobol*2.9)+0.1; % 0.1 to 3 (lin)
+%     r0 = (params_lhs(iLHS, 3)*2.9)+1; % 1 to 3 (lhs lin) 
+    r0 = (params_lhs(iLHS, 3)*r0_center*0.4)+r0_center*0.8; % 1*10^-3 to 9*10^-3 (lhs lin loc)
+%     r0 = (params_lhs(iLHS, 3)*r0_center*2.9)+r0_center*0.1; % 1*10^-3 to 9*10^-3 (lhs lin glob)
+
+%     mu = mu_center;
+%     mu = 10^((params_lhs(iLHS)*-6)-2); % 1e-8 to 1e-2 (log)
+%     mu = (rand_sobol*1e-6)+0.5e-6; % 0.5e-6 to 1.5e-6 (lin)
+%     mu = (params_lhs(iLHS, 4)*2.9e-6)+0.1e-6; % 0.1e-6 to 3.0e-6 (lhs lin)
+    mu = (params_lhs(iLHS, 4)*mu_center*0.4)+mu_center*0.8; % 1*10^-3 to 9*10^-3 (lhs lin loc)
+%     mu = (params_lhs(iLHS, 4)*mu_center*2.9)+mu_center*0.1; % 1*10^-3 to 9*10^-3 (lhs lin glob)
+
+%     V0 = V0_center;
+%     V0 = round(4*(10^((rand_sobol*4)+0))); % 4e0 to 4e4 (log)
+%     V0 = round((rand_sobol*90)+10); % 10 to 100 (lin)
+    V0 = round((params_lhs(iLHS, 5)*V0_center*0.4)+V0_center*0.8); % 32 to 48 (lhs lin loc)
+    
+%     U0 = U0_center;
+%     U0 = 10^((params_lhs(iLHS)*5)+2); % 1e2 to 1e7 (log)
+    U0 = round((params_lhs(iLHS, 6)*U0_center*0.4)+U0_center*0.8); % 8e3 to 12e3 (lhs lin loc)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     params = struct();
     params.('U0') = U0;
@@ -90,7 +113,7 @@ function Gillespie_func(x)
     stim = 0;                   % stimulation of immune cells by infected cells
 
     % Follows
-    nK = 10;                                            % Number of iterations to do with the same parameter values                    
+    nK = 1;                                            % Number of iterations to do with the same parameter values                    
     L = length(gRefSeq);                                % length of genome sequence
     La = length(pRefSeq);  
     d0 = zeros(length(pNames),1);                       % distance of WTseq to fittest strain
@@ -99,7 +122,7 @@ function Gillespie_func(x)
 
     
     
-    % Start for-loop over mutation rates ######################################
+    % Start for-loop over mutation rates 
     for k = 1:nK
         tic
         
@@ -232,7 +255,7 @@ function Gillespie_func(x)
                      reaction_happened = true;
                     break
                  end
-                 z = z + c*I(i);                                                % R3: clearence of a cell infected by strain i
+                 z = z + c*I(i);                                                % R3: clearance of a cell infected by strain i
                  if z > rnd
                      I(i) = I(i) - 1;
                      if V(i) + I(i) == 0    % if the strain has gone extinct, remove it
@@ -255,7 +278,7 @@ function Gillespie_func(x)
                      reaction_happened = true;
                      break % for-loop
                  end
-                 z = z + b*V(i);                                                % R4: clearence of a free viral particle of strain i
+                 z = z + b*V(i);                                                % R4: clearance of a free viral particle of strain i
                  if z > rnd
                      V(i) = V(i) - 1;
                      if V(i) + I(i) == 0    % if the strain has gone extinct, remove it
@@ -274,6 +297,7 @@ function Gillespie_func(x)
                             aseqUniq_loc, aseqUniq_mut, aseqUniq_nMut, ...
                             aseqUniq_n, aseqUniq_i, aseqUniq_r);
                      end
+                     bN = bN + 1;
                      reaction_happened = true;
                      break % for-loop
                  end
@@ -396,8 +420,8 @@ function Gillespie_func(x)
         time = data_collect(:, 1)';
         delta_t = time(2:end) - time(1:end-1);
         sumY = 1 ./ sum(Y,2);
-        relativeY = Y .* repmat(sumY, 1, size(Y,2));             
-        statY = (delta_t * relativeY(2:end,:)) / time(end);
+        relativeY = Y .* repmat(sumY, 1, size(Y,2));       
+%         statY = sum(delta_t .* relativeY(2:end,:), 1) / time(end);
         statD = sum(meanDistance(2:end) .* delta_t) / time(end);
         statR = sum(meanFitness(2:end) .* delta_t) / time(end); 
         statDiv = sum(diversity(2:end) .* delta_t) / time(end);
@@ -406,7 +430,6 @@ function Gillespie_func(x)
         
         % Collect information for each simulation
         data(k).alpha = alpha;
-        data(k).mu = mu;
 
         data(k).t_end = t;
         data(k).ntot_end = ntot;
@@ -427,7 +450,7 @@ function Gillespie_func(x)
         data(k).rN = data_collect(:,10);
         data(k).viralTiter = data_collect(:,11);
 
-        data(k).statY = statY;
+%         data(k).statY = statY;
         data(k).relativeY = relativeY(:, 1:maxY);
         data(k).statD = statD;
         data(k).statR = statR;
@@ -444,9 +467,12 @@ function Gillespie_func(x)
 
     disp(['Sum of simulation times (s): ', num2str(sum([data.toc]))])
     
-    simString = 'iter3';
+    simString = 'iter1';
 %     fname = 'Output/Gillespie.mat';
 %     save(fname, 'data', 'params', '-v7.3');
     mkdir(simString)
     save([simString, filesep, simString, '_', x, '.mat'], 'data', 'params', '-v7.3');
 end 
+
+
+

@@ -7,9 +7,10 @@ function [beta, sigma] = logisticRegressionProteins()
 % each protein
 
     % load the data
-    data = load('Data/mismatchBoolean0821.mat');
+    data = load('Data/mismatchBoolean0923.mat');
     mismatchBoolean = data.mismatchBoolean;
     proteinNames = fields(mismatchBoolean);
+    lambda = 0.001;
     % initialize beta arrays:
     beta = zeros(2,length(proteinNames));
     sigma = zeros(1, length(proteinNames));
@@ -21,45 +22,14 @@ function [beta, sigma] = logisticRegressionProteins()
         X = transpose(0 : N-1);
  
         % Do logistic regression
-        b = logisticRegression(X, y);
-        beta(:, i) = b;
-        
+        %b = logisticRegression(X, y);
+        %b = lassoglm(X,y,'binomial','link','logit','Lambda', logspace(-15,0,100));
+        Mdl = fitclinear(X,y,'Learner','logistic','Regularization','ridge','Lambda',lambda);
+        b = [Mdl.Bias; Mdl.Beta];
+        beta(:,i) = b;
         % Find standard error
         prediction = predict(b, X);
         sigma(i) = sqrt (sum((prediction - y) .^2) / (N - 2) );
     end
-end
-
-%% Functions
-function g = sigmoid(z)
-% Calculate sigmoid of z.
-    g = 1 ./ (1 + exp(-z));
-end
-
-function [J, grad] = computeCost(b, X, y)
-% Calculate cost and gradient.
-% Extra cost factor is put on the first term (x=0). 
-    m = size(X, 1);
-    % add constant term
-    X = [ones(m, 1) X];                                                    
-    
-    h = sigmoid(X * b);
-    
-    J = -(1 / m) * sum( y .* log(h) + (1 - y) .* log(1 - h));
-    
-    grad = zeros(size(b,1), 1);
-    
-    for i = 1:size(grad)
-        grad(i) = (1 / m) * sum( (h - y)' * X(:,i) );
-    end
-end
-
-function b = logisticRegression(X, y)
-    % Compute cost and gradient
-    [m, n] = size(X);
-    b0 = zeros((n+1),1);
-    % Gradient descent
-    options = optimset('GradObj', 'on', 'MaxIter', 400, 'Display', 'off');
-    b = fminunc(@(t)computeCost(t, X, y), b0, options);
 end
 
