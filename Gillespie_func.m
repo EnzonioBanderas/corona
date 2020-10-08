@@ -11,7 +11,7 @@ function Gillespie_func(x)
 %     rand_sobol = net(p, 1); % generate 1 points of the sobol sequence
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    load(['Data', filesep, 'params_lhs_1e4_6_Iter1e3.mat'], 'params_lhs') % load params_lhs
+    load(['Data', filesep, 'params_lhs_1e4_7_Iter1e3.mat'], 'params_lhs') % load params_lhs
 %     params_lhs = lhsdesign(1e3, 1, 'Iterations', 1e4); % [V0 or mu]
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     nLHS = size(params_lhs, 1);
@@ -61,14 +61,16 @@ function Gillespie_func(x)
     a = (params_lhs(iLHS, 1)*a_center*0.4)+a_center*0.8; % 1*10^-3 to 9*10^-3 (lhs lin loc)
 %     a = (params_lhs(iLHS, 1)*a_center*2.9)+a_center*0.1; % 1*10^-3 to 9*10^-3 (lhs lin glob)
     
-%     b = b_center;%         
+%     b = b_center;         
 %     b = 10^((rand_sobol*3)-2); % 1e-2 to 1e1 (log)
 %     b = (rand_sobol*2.9)+0.1; % 0.1 to 3 (lin)
 %     b = (params_lhs(iLHS, 2)*2.9)+0.1; % 0.1 to 3 (lhs lin)
     b = (params_lhs(iLHS, 2)*b_center*0.4)+b_center*0.8; % 1*10^-3 to 9*10^-3 (lhs lin loc)
 %     b = (params_lhs(iLHS, 2)*b_center*2.9)+b_center*0.1; % 1*10^-3 to 9*10^-3 (lhs lin glob)
 
-    c = b;  
+%     c = b;  
+    c_center = b_center;
+    c = (params_lhs(iLHS, 7)*c_center*0.4)+c_center*0.8; % 8e3 to 12e3 (lhs lin loc)
     
 %     r0 = r0_center;
 %     r0 = 10^((rand_sobol*2)-1); % 1e-1 to 1e1 (log)
