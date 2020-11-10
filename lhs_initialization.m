@@ -1,13 +1,21 @@
-% latin hypercube intitialization
+% Latin Hypercube Sampling (LHS) intitialization
 
-% lh initial test, 1e3 points (probably 1e1 iterations per point, so 1e4 in total)
-params_lhs = lhsdesign(1e3, 7, 'Iterations', 1e4); % [a b r0 mu]
-save('Data/params_lhs_1e3_7_Iter1e4.mat', 'params_lhs')
+% LHS with 1000 points for 4 parameters
+params_lhs = lhsdesign(1e3, 4); % [a b r0 mu]
 
-% lh initial test, 1e4 points (probably 1e1 iterations per point, so 1e5 in total)
-params_lhs = lhsdesign(1e4, 7, 'Iterations', 1e3); % [a b r0 mu]
-save('Data/params_lhs_1e4_7_Iter1e3.mat', 'params_lhs')
+% set standard parameter values
+a = 4.5e-3;
+b = 0.9;
+r0 = 1.5;
+mu = 1e-6;
 
-% lh initial test, 1e5 points (probably 1e1 iterations per point, so 1e6 in total)
-params_lhs = lhsdesign(1e5, 7, 'Iterations', 1e2); % [a b r0 mu]
-save('Data/params_lhs_1e5_7_Iter1e2.mat', 'params_lhs')
+% Convert points in hypercube to input parameter sets
+varRatio = 0.2; % 20% variation around standard parameter value
+params_lhs = params_lhs * 2 * varRatio + (1 - varRatio);
+params_lhs(:,1) = params_lhs(:,1) * a;
+params_lhs(:,2) = params_lhs(:,2) * b;
+params_lhs(:,3) = params_lhs(:,3) * r0;
+params_lhs(:,4) = params_lhs(:,4) * mu;
+
+% Save input parameter sets
+save('Data/params_lhs_1e3_4.mat', 'params_lhs')
